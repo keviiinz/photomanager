@@ -39,6 +39,12 @@ new #[Title('Mis galerías')] class extends Component {
 
         $gallery->saveFor(Auth::user());
 
+        activity('gallery')
+            ->causedBy(Auth::user())
+            ->performedOn($gallery)
+            ->event('saved')
+            ->log("Agregó la galería \"{$gallery->title}\" a su colección");
+
         $this->slug = '';
         unset($this->galleries);
 

@@ -39,4 +39,19 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
     }
+
+    public function test_registration_cannot_self_assign_the_superadmin_role(): void
+    {
+        $response = $this->post(route('register.store'), [
+            'name' => 'Intruder',
+            'email' => 'intruder@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'role' => 'superadmin',
+        ]);
+
+        $response->assertSessionHasErrors('role');
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['email' => 'intruder@example.com']);
+    }
 }

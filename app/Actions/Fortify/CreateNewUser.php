@@ -6,8 +6,8 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\UserRole;
 use App\Models\User;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -24,7 +24,9 @@ class CreateNewUser implements CreatesNewUsers
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
-            'role' => ['required', Rule::enum(UserRole::class)],
+            // Superadmin is intentionally excluded here — it can never be
+            // self-assigned through public registration.
+            'role' => ['required', Rule::in([UserRole::Photographer->value, UserRole::Client->value])],
         ])->validate();
 
         return User::create([

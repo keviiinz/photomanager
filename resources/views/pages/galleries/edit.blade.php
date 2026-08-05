@@ -198,6 +198,12 @@ new #[Title('Editar galería')] class extends Component {
 
         $this->gallery->update(['unlock_code' => $code]);
 
+        activity('gallery')
+            ->causedBy(auth()->user())
+            ->performedOn($this->gallery)
+            ->event('code_regenerated')
+            ->log("Regeneró el código de desbloqueo de la galería \"{$this->gallery->title}\"");
+
         $this->revealedCode = $code;
     }
 

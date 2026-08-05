@@ -44,6 +44,13 @@ class MediaController extends Controller
     {
         abort_unless($media->album->gallery->isUnlockedFor($request->user()), 403);
 
+        activity('gallery')
+            ->causedBy($request->user())
+            ->performedOn($media->album->gallery)
+            ->withProperties(['media_id' => $media->id, 'original_name' => $media->original_name])
+            ->event('media_downloaded')
+            ->log("Descargó el archivo \"{$media->original_name}\" de la galería \"{$media->album->gallery->title}\"");
+
         return Storage::disk($media->disk)->download($media->path, $media->original_name);
     }
 

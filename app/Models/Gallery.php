@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
@@ -28,7 +30,7 @@ use Illuminate\Support\Carbon;
 class Gallery extends Model
 {
     /** @use HasFactory<GalleryFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /**
      * @return array<string, string>
@@ -39,6 +41,21 @@ class Gallery extends Model
             'unlock_code' => 'hashed',
             'available_until' => 'date',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'client_name', 'location', 'available_until'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('gallery')
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => "Creó la galería \"{$this->title}\"",
+                'updated' => "Editó la galería \"{$this->title}\"",
+                'deleted' => "Eliminó la galería \"{$this->title}\"",
+                default => $event,
+            });
     }
 
     public function getRouteKeyName(): string

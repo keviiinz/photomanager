@@ -53,6 +53,13 @@ class GalleryZipDownloadController extends Controller
 
         $zip->close();
 
+        activity('gallery')
+            ->causedBy($request->user())
+            ->performedOn($gallery)
+            ->withProperties(['count' => $media->count(), 'files' => $media->pluck('original_name')])
+            ->event('zip_downloaded')
+            ->log("Descargó {$media->count()} archivo(s) en .zip de la galería \"{$gallery->title}\"");
+
         return response()->download($zipPath, Str::slug($gallery->title).'.zip')->deleteFileAfterSend();
     }
 }

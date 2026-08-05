@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
@@ -37,7 +39,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, LogsActivity, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -53,6 +55,22 @@ class User extends Authenticatable implements PasskeyUser
         ];
     }
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        // Never log password/2FA secrets, even hashed — only track identity/role changes.
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'role'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('user')
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => "Se registró como {$this->role->value} ({$this->name})",
+                'updated' => "Actualizó los datos de la cuenta de {$this->name}",
+                'deleted' => "Eliminó la cuenta de {$this->name}",
+                default => $event,
+            });
+    }
+
     public function isPhotographer(): bool
     {
         return $this->role === UserRole::Photographer;
@@ -61,6 +79,11 @@ class User extends Authenticatable implements PasskeyUser
     public function isClient(): bool
     {
         return $this->role === UserRole::Client;
+    }
+
+    public function isSuperadmin(): bool
+    {
+        return $this->role === UserRole::Superadmin;
     }
 
     /**

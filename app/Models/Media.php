@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Enums\MediaType;
+use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
@@ -26,8 +29,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['album_id', 'type', 'disk', 'path', 'original_name', 'mime_type', 'size_bytes', 'is_featured', 'position'])]
 class Media extends Model
 {
-    /** @use HasFactory<\Database\Factories\MediaFactory> */
-    use HasFactory;
+    /** @use HasFactory<MediaFactory> */
+    use HasFactory, LogsActivity;
 
     /**
      * @return array<string, string>
@@ -38,6 +41,21 @@ class Media extends Model
             'type' => MediaType::class,
             'is_featured' => 'boolean',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['album_id', 'original_name', 'type', 'is_featured'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('media')
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => "Subió el archivo \"{$this->original_name}\"",
+                'updated' => "Actualizó el archivo \"{$this->original_name}\"",
+                'deleted' => "Eliminó el archivo \"{$this->original_name}\"",
+                default => $event,
+            });
     }
 
     /**
