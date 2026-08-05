@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estudio Lente — Galería del cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#17140f;
+    --ink-2:#211d16;
+    --ink-3:#2b261c;
+    --paper:#f2ede2;
+    --paper-dim:#c9c2b0;
+    --brass:#c89b5c;
+    --brass-dim:#8f713f;
+    --safelight:#a5372f;
+    --safelight-dim:#5c211c;
+    --line:rgba(242,237,226,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .serif{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* HEADER */
+  header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:22px 48px;border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{width:26px;height:26px;border:1.5px solid var(--brass);border-radius:50%;position:relative;flex-shrink:0;}
+  .brand .mark::after{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--brass);}
+  .brand-name{font-size:15px;letter-spacing:0.02em;}
+  .client-tag{font-size:12px;color:var(--paper-dim);}
+  .header-actions{display:flex;align-items:center;gap:18px;}
+  .icon-btn{background:none;border:1px solid var(--line);color:var(--paper);border-radius:6px;padding:8px 10px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .icon-btn:hover{border-color:var(--brass);color:var(--brass);}
+
+  /* HERO */
+  .hero{
+    position:relative;height:62vh;min-height:420px;
+    background:linear-gradient(180deg, rgba(23,20,15,0.15) 0%, rgba(23,20,15,0.85) 82%, var(--ink) 100%),
+      url('https://picsum.photos/seed/atardecer-boda/1600/900') center/cover no-repeat;
+    display:flex;align-items:flex-end;
+  }
+  .hero-inner{padding:0 48px 40px;max-width:760px;}
+  .hero-eyebrow{font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--brass);margin-bottom:14px;}
+  .hero h1{font-size:44px;font-weight:500;margin:0 0 14px;line-height:1.1;}
+  .hero-meta{display:flex;gap:26px;font-size:13px;color:var(--paper-dim);flex-wrap:wrap;}
+  .hero-meta span{display:flex;align-items:center;gap:6px;}
+
+  /* CONTACT SHEET NAV */
+  .filmstrip-wrap{
+    border-bottom:1px solid var(--line);
+    padding:18px 0 22px;
+    background:var(--ink-2);
+  }
+  .filmstrip-label{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--paper-dim);padding:0 48px 12px;}
+  .filmstrip{
+    display:flex;gap:2px;overflow-x:auto;padding:8px 48px;
+    scrollbar-width:thin;
+  }
+  .film-frame{
+    flex-shrink:0;width:120px;position:relative;cursor:pointer;
+    border:2px solid transparent;
+  }
+  .film-frame.active{border-color:var(--brass);}
+  .film-frame img{width:100%;height:80px;object-fit:cover;display:block;filter:grayscale(0.15) contrast(1.05);}
+  .film-frame .perf{position:absolute;top:0;bottom:0;width:120px;pointer-events:none;background-image:radial-gradient(circle, var(--ink-2) 2.5px, transparent 2.6px);background-size:14px 14px;background-position:0 5px;opacity:0;}
+  .film-caption{font-size:10px;color:var(--paper-dim);text-align:center;padding-top:4px;}
+  .film-caption b{color:var(--paper);font-weight:500;}
+
+  /* GALLERY GRID */
+  .gallery-section{padding:36px 48px 140px;}
+  .gallery-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+  .gallery-toolbar h2{font-size:18px;font-weight:500;margin:0;}
+  .toolbar-controls{display:flex;gap:10px;font-size:12px;color:var(--paper-dim);align-items:center;}
+  .quality-pill{border:1px solid var(--line);border-radius:20px;padding:6px 12px;display:flex;gap:6px;align-items:center;}
+  .quality-pill b{color:var(--brass);font-weight:500;}
+
+  .grid{
+    columns:4 220px;column-gap:6px;
+  }
+  .tile{
+    break-inside:avoid;margin-bottom:6px;position:relative;overflow:hidden;
+    border-radius:2px;cursor:pointer;
+  }
+  .tile img{width:100%;display:block;transition:transform .35s ease;}
+  .tile:hover img{transform:scale(1.04);}
+  .tile-overlay{
+    position:absolute;inset:0;background:linear-gradient(180deg, rgba(23,20,15,0) 55%, rgba(23,20,15,0.75) 100%);
+    opacity:0;transition:opacity .2s ease;display:flex;align-items:flex-end;justify-content:space-between;padding:10px;
+  }
+  .tile:hover .tile-overlay, .tile.selected .tile-overlay{opacity:1;}
+  .tile-meta{font-size:10px;color:var(--paper-dim);}
+  .select-mark{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--paper);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .tile.selected .select-mark{border-color:var(--safelight);background:var(--safelight);}
+  .select-mark::after{content:"";width:10px;height:10px;border-radius:50%;}
+  .tile.selected .select-mark::after{border:1.5px solid var(--ink);border-radius:50%;width:8px;height:8px;}
+  .video-badge{
+    position:absolute;top:8px;left:8px;background:rgba(23,20,15,0.7);
+    border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  }
+  .video-badge::after{content:"";border-left:9px solid var(--paper);border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:2px;}
+  .video-dur{position:absolute;bottom:8px;right:8px;font-size:10px;background:rgba(23,20,15,0.7);padding:2px 6px;border-radius:3px;}
+
+  /* STICKY DOWNLOAD BAR */
+  .dl-bar{
+    position:sticky;bottom:0;left:0;right:0;
+    background:var(--ink-3);border-top:1px solid var(--line);
+    padding:16px 48px;display:flex;justify-content:space-between;align-items:center;
+    margin:0 -48px;
+  }
+  .dl-info{font-size:13px;color:var(--paper-dim);}
+  .dl-info b{color:var(--paper);font-weight:500;}
+  .dl-actions{display:flex;gap:12px;align-items:center;}
+  .btn{
+    border-radius:6px;padding:11px 20px;font-size:13px;cursor:pointer;border:1px solid var(--line);
+    background:none;color:var(--paper);
+  }
+  .btn.primary{background:var(--brass);border-color:var(--brass);color:var(--ink);font-weight:500;}
+  .btn.primary:hover{background:#d6ab6c;}
+  .btn.ghost:hover{border-color:var(--paper-dim);}
+
+  /* LIGHTBOX */
+  .lightbox{
+    position:fixed;inset:0;background:rgba(10,9,6,0.94);display:none;
+    align-items:center;justify-content:center;z-index:50;flex-direction:column;
+  }
+  .lightbox.open{display:flex;}
+  .lightbox img{max-height:66vh;max-width:80vw;object-fit:contain;border:1px solid var(--line);}
+  .lightbox-bar{width:80vw;max-width:900px;display:flex;justify-content:space-between;align-items:center;padding-top:16px;font-size:12px;color:var(--paper-dim);}
+  .lb-close{position:absolute;top:26px;right:40px;background:none;border:none;color:var(--paper);font-size:22px;cursor:pointer;}
+  .lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--paper);font-size:30px;cursor:pointer;opacity:0.7;}
+  .lb-nav:hover{opacity:1;}
+  .lb-prev{left:24px;}
+  .lb-next{right:24px;}
+
+  @media (max-width: 720px){
+    header, .hero-inner, .gallery-section{padding-left:20px;padding-right:20px;}
+    .filmstrip{padding:8px 20px;}
+    .hero h1{font-size:30px;}
+    .grid{columns:2 160px;}
+    .dl-bar{margin:0 -20px;padding:14px 20px;flex-direction:column;gap:10px;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <div>
+      <div class="brand-name serif">Estudio Lente</div>
+      <div class="client-tag">Galería privada · Ana &amp; Marco</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn">↧ Descargar todo</button>
+    <button class="icon-btn">⟳ Compartir enlace</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow mono">Sesión entregada</div>
+    <h1 class="serif">Boda de Ana &amp; Marco</h1>
+    <div class="hero-meta mono">
+      <span>14 jun 2026 · Mérida, Yuc.</span>
+      <span>486 fotos</span>
+      <span>12 videos</span>
+      <span>Disponible hasta 14 dic 2026</span>
+    </div>
+  </div>
+</section>
+
+<div class="filmstrip-wrap">
+  <div class="filmstrip-label mono">Álbumes de la sesión</div>
+  <div class="filmstrip">
+    <div class="film-frame active">
+      <img src="https://picsum.photos/seed/prep/240/160" alt="">
+      <div class="film-caption">Preparativos<br><b>64 fotos</b></div>
+    </div>
+    <div class="film-frame">
+      <img src="https://picsum.photos/seed/ceremonia/240/160" alt="">
+      <div class="film-caption">Ceremonia<br><b>158 fotos</b></div>
+    </div>
+    <div class="film-frame">
+      <img src="https://picsum.photos/seed/retratos/240/160" alt="">
+      <div class="film-caption">Retratos<br><b>92 fotos</b></div>
+    </div>
+    <div class="film-frame">
+      <img src="https://picsum.photos/seed/recepcion/240/160" alt="">
+      <div class="film-caption">Recepción<br><b>172 fotos</b></div>
+    </div>
+    <div class="film-frame">
+      <img src="https://picsum.photos/seed/highlights/240/160" alt="">
+      <div class="film-caption">Video highlights<br><b>12 videos</b></div>
+    </div>
+  </div>
+</div>
+
+<section class="gallery-section">
+  <div class="gallery-toolbar">
+    <h2 class="serif">Preparativos</h2>
+    <div class="toolbar-controls">
+      <span id="selCount">0 seleccionadas</span>
+      <div class="quality-pill">Calidad: <b>Original (RAW/4K)</b></div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</section>
+
+<div class="dl-bar">
+  <div class="dl-info">
+    <b id="barCount">0 elementos</b> seleccionados · <span id="barSize">0 GB</span> aprox. · <span id="barTime">tiempo estimado según tu conexión</span>
+  </div>
+  <div class="dl-actions">
+    <button class="btn ghost" onclick="selectAll()">Seleccionar todo el álbum</button>
+    <button class="btn primary" onclick="downloadSelection()">Descargar selección</button>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="closeLightbox()">&times;</button>
+  <button class="lb-nav lb-prev" onclick="navLightbox(-1)">&#8249;</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lightbox-bar mono">
+    <span id="lbMeta"></span>
+    <button class="btn primary" onclick="toggleSelectCurrent()" id="lbSelectBtn">Marcar para descargar</button>
+  </div>
+  <button class="lb-nav lb-next" onclick="navLightbox(1)">&#8250;</button>
+</div>
+
+<script>
+  const photos = [];
+  const specs = [
+    {w:400,h:520,size:38,type:'foto'},
+    {w:400,h:300,size:22,type:'foto'},
+    {w:400,h:600,size:45,type:'foto'},
+    {w:400,h:400,size:30,type:'foto'},
+    {w:400,h:280,size:19,type:'video',dur:'0:42'},
+    {w:400,h:540,size:41,type:'foto'},
+  ];
+  for(let i=0;i<18;i++){
+    const s = specs[i % specs.length];
+    photos.push({
+      id:i,
+      src:`https://picsum.photos/seed/prep${i}/${s.w}/${s.h}`,
+      big:`https://picsum.photos/seed/prep${i}/1200/${Math.round(s.h*3)}`,
+      size:s.size,
+      type:s.type,
+      dur:s.dur||null,
+      selected:false
+    });
+  }
+
+  const grid = document.getElementById('grid');
+  function renderGrid(){
+    grid.innerHTML = photos.map(p => `
+      <div class="tile ${p.selected?'selected':''}" data-id="${p.id}" onclick="openLightbox(${p.id})">
+        <img src="${p.src}" alt="">
+        ${p.type==='video' ? `<div class="video-badge"></div><div class="video-dur mono">${p.dur}</div>` : ''}
+        <div class="tile-overlay">
+          <span class="tile-meta mono">${p.size} MB</span>
+          <span class="select-mark" onclick="event.stopPropagation(); toggleSelect(${p.id})"></span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleSelect(id){
+    const p = photos.find(x=>x.id===id);
+    p.selected = !p.selected;
+    renderGrid();
+    updateBar();
+  }
+  function selectAll(){
+    photos.forEach(p=>p.selected=true);
+    renderGrid();
+    updateBar();
+  }
+  function updateBar(){
+    const sel = photos.filter(p=>p.selected);
+    const totalMB = sel.reduce((a,p)=>a+p.size,0);
+    document.getElementById('selCount').textContent = sel.length + ' seleccionadas';
+    document.getElementById('barCount').textContent = sel.length + ' elementos';
+    document.getElementById('barSize').textContent = (totalMB/1000).toFixed(2) + ' GB';
+    document.getElementById('barTime').textContent = sel.length ? '~' + Math.max(1,Math.round(totalMB/25)) + ' min en conexión promedio' : 'tiempo estimado según tu conexión';
+  }
+  function downloadSelection(){
+    const sel = photos.filter(p=>p.selected);
+    if(!sel.length){ alert('Selecciona al menos una foto o video para descargar.'); return; }
+    alert('Preparando descarga de ' + sel.length + ' archivo(s) en calidad original. En la versión real esto generaría un .zip con tus fotos y videos.');
+  }
+
+  let lbIndex = 0;
+  function openLightbox(id){
+    lbIndex = photos.findIndex(p=>p.id===id);
+    renderLightbox();
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox(){
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  function navLightbox(dir){
+    lbIndex = (lbIndex + dir + photos.length) % photos.length;
+    renderLightbox();
+  }
+  function renderLightbox(){
+    const p = photos[lbIndex];
+    document.getElementById('lbImg').src = p.big;
+    document.getElementById('lbMeta').textContent = (p.type==='video' ? 'Video · ' + p.dur + ' · ' : 'Foto · ') + p.size + ' MB · original';
+    document.getElementById('lbSelectBtn').textContent = p.selected ? 'Quitar de la selección' : 'Marcar para descargar';
+  }
+  function toggleSelectCurrent(){
+    const p = photos[lbIndex];
+    p.selected = !p.selected;
+    renderLightbox();
+    renderGrid();
+    updateBar();
+  }
+  document.addEventListener('keydown', e=>{
+    if(!document.getElementById('lightbox').classList.contains('open')) return;
+    if(e.key==='Escape') closeLightbox();
+    if(e.key==='ArrowRight') navLightbox(1);
+    if(e.key==='ArrowLeft') navLightbox(-1);
+  });
+
+  renderGrid();
+  updateBar();
+</script>
+
+</body>
+</html>
