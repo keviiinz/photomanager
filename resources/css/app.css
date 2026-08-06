@@ -10,29 +10,33 @@
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    /* Warm neutral scale (replaces the default cool gray zinc palette everywhere). */
+    --color-zinc-50: #faf7f5;
+    --color-zinc-100: #f5efec;
+    --color-zinc-200: #e8ddd8;
+    --color-zinc-300: #d6c6bf;
+    --color-zinc-400: #ac9b93;
+    --color-zinc-500: #8a7b74;
+    --color-zinc-600: #6d6058;
+    --color-zinc-700: #55504d;
+    --color-zinc-800: #3d3835;
+    --color-zinc-900: #2a2523;
+    --color-zinc-950: #1a1615;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
-    --color-accent-foreground: var(--color-white);
+    --color-gray-200: var(--color-zinc-200);
+
+    --color-accent: #55504d;
+    --color-accent-content: #55504d;
+    --color-accent-foreground: #f5efec;
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: #f0e8e3;
+        --color-accent-content: #f0e8e3;
+        --color-accent-foreground: #2a2523;
     }
 }
 

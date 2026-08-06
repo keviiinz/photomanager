@@ -257,7 +257,7 @@ new #[Layout('layouts::public')] class extends Component {
     @endif
 
     @if ($this->isUnlocked && $this->activeAlbumMedia->isNotEmpty())
-        <div class="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 border-t border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:text>
                 {{ trans_choice(':count elemento seleccionado|:count elementos seleccionados', count($selected), ['count' => count($selected)]) }}
                 · {{ number_format($this->selectedTotalBytes / 1_000_000, 1) }} MB
