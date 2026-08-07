@@ -114,6 +114,52 @@ class PhotographerCanManageGalleryTest extends TestCase
         $this->assertNull($component->get('revealedCode'));
     }
 
+    public function test_photographer_can_choose_a_cover_photo_for_the_gallery(): void
+    {
+        $photographer = User::factory()->create();
+        $gallery = Gallery::factory()->create(['photographer_id' => $photographer->id]);
+        $album = $gallery->albums()->first();
+        $photo = $album->media()->create([
+            'type' => 'photo',
+            'disk' => 'local',
+            'path' => 'galleries/fake.jpg',
+            'original_name' => 'fake.jpg',
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 1000,
+        ]);
+
+        $this->actingAs($photographer);
+
+        Livewire::test('pages::galleries.edit', ['gallery' => $gallery])
+            ->call('setCover', $photo->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame($photo->id, $gallery->fresh()->cover_media_id);
+        $this->assertSame($photo->id, $gallery->fresh()->coverImage()->id);
+    }
+
+    public function test_gallery_cover_falls_back_to_the_first_featured_photo_when_none_is_chosen(): void
+    {
+        $photographer = User::factory()->create();
+        $gallery = Gallery::factory()->create(['photographer_id' => $photographer->id]);
+        $album = $gallery->albums()->first();
+
+        $album->media()->create([
+            'type' => 'photo', 'disk' => 'local', 'path' => 'galleries/plain.jpg',
+            'original_name' => 'plain.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1000,
+            'is_featured' => false, 'position' => 0,
+        ]);
+
+        $featured = $album->media()->create([
+            'type' => 'photo', 'disk' => 'local', 'path' => 'galleries/featured.jpg',
+            'original_name' => 'featured.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1000,
+            'is_featured' => true, 'position' => 1,
+        ]);
+
+        $this->assertNull($gallery->cover_media_id);
+        $this->assertSame($featured->id, $gallery->coverImage()->id);
+    }
+
     public function test_a_photographer_cannot_edit_another_photographers_gallery(): void
     {
         $owner = User::factory()->create();

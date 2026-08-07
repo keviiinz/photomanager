@@ -17,7 +17,49 @@ new #[Layout('layouts::public')] class extends Component {
     }
 }; ?>
 
-<div class="flex flex-col gap-24 pb-10 sm:pb-16 {{ $this->photos ? '' : 'pt-10 sm:pt-16' }}">
+<div x-data="{ introOpen: true }" x-effect="document.body.style.overflow = introOpen ? 'hidden' : ''">
+    <div
+        x-show="introOpen"
+        x-transition:leave="transition ease-in-out duration-700"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900"
+    >
+        @if ($this->photos)
+            <img
+                src="{{ asset('fotos_home/'.rawurlencode($this->photos[0])) }}"
+                class="absolute inset-0 h-full w-full object-cover"
+                alt=""
+            >
+        @endif
+        <div class="absolute inset-0 bg-black/55"></div>
+
+        <div class="relative flex max-w-xl flex-col items-center gap-6 p-6 text-center text-white">
+            <span class="text-xs font-medium tracking-[0.2em] text-white/70 uppercase">
+                {{ __('Portafolio de fotografías') }}
+            </span>
+
+            <h1
+                class="text-4xl leading-tight sm:text-5xl"
+                style="font-family: 'Instrument Serif', ui-serif, serif;"
+            >
+                {{ __('Cada sesión, lista para compartir con quien tú quieras') }}
+            </h1>
+
+            <p class="max-w-lg text-lg text-white/80">
+                {{ __('Sube las fotos y video de tu sesión, comparte lo mejor de forma pública, y deja que tus visitantes desbloqueen todo lo demás con un código.') }}
+            </p>
+
+            <flux:button type="button" variant="primary" x-on:click="introOpen = false">
+                {{ __('Ir a la página') }}
+            </flux:button>
+        </div>
+    </div>
+
+    <div
+        x-bind:class="introOpen ? 'opacity-0' : 'opacity-100'"
+        class="flex flex-col gap-24 pb-10 sm:pb-16 transition-opacity duration-700 {{ $this->photos ? '' : 'pt-10 sm:pt-16' }}"
+    >
     <div class="relative {{ $this->photos ? 'left-1/2 right-1/2 -mx-[50vw] w-screen' : '' }}">
         @if ($this->photos)
             <div
@@ -88,42 +130,6 @@ new #[Layout('layouts::public')] class extends Component {
                 @endif
             </div>
         @endif
-
-        <section
-            class="{{ $this->photos
-                ? 'pointer-events-none absolute inset-0 flex items-center justify-center p-6'
-                : 'mx-auto flex max-w-2xl flex-col items-center gap-6 text-center' }}"
-        >
-            <div
-                class="{{ $this->photos
-                    ? 'pointer-events-auto flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-[#e2d6d0] bg-[#f8f3f0] p-8 text-center shadow-[0_1px_2px_rgba(61,56,53,0.04),0_12px_28px_-10px_rgba(61,56,53,0.25)] dark:border-zinc-700 dark:bg-zinc-900'
-                    : 'flex flex-col items-center gap-6 text-center' }}"
-            >
-                <span class="text-xs font-medium tracking-[0.2em] text-zinc-500 uppercase">
-                    {{ __('Portafolio de fotografías') }}
-                </span>
-
-                <h1
-                    class="text-4xl leading-tight text-zinc-800 sm:text-5xl dark:text-zinc-50"
-                    style="font-family: 'Instrument Serif', ui-serif, serif;"
-                >
-                    {{ __('Cada sesión, lista para compartir con quien tú quieras') }}
-                </h1>
-
-                <p class="max-w-lg text-lg text-zinc-500">
-                    {{ __('Sube las fotos y video de tu sesión, comparte lo mejor de forma pública, y deja que tus visitantes desbloqueen todo lo demás con un código.') }}
-                </p>
-
-                <div class="flex flex-wrap items-center justify-center gap-3">
-                    <flux:button :href="route('register')" variant="primary" wire:navigate>
-                        {{ __('Crear cuenta') }}
-                    </flux:button>
-                    <flux:button :href="route('login')" variant="ghost" wire:navigate>
-                        {{ __('Ya tengo cuenta') }}
-                    </flux:button>
-                </div>
-            </div>
-        </section>
     </div>
 
     <section class="mx-auto grid w-full max-w-4xl gap-12 border-t border-zinc-200 pt-16 sm:grid-cols-3 dark:border-zinc-700">
@@ -167,4 +173,5 @@ new #[Layout('layouts::public')] class extends Component {
         <flux:text class="text-zinc-500">{{ __('Código de acceso por sesión') }}</flux:text>
         <flux:text class="text-zinc-500">{{ __('Descarga por lote en .zip') }}</flux:text>
     </section>
+    </div>
 </div>

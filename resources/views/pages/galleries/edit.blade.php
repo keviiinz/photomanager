@@ -63,6 +63,12 @@ new #[Title('Editar galería')] class extends Component {
         return $this->albums->firstWhere('id', $this->activeAlbumId);
     }
 
+    #[Computed]
+    public function coverImageId(): ?int
+    {
+        return $this->gallery->coverImage()?->id;
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, Media>
      */
@@ -146,7 +152,7 @@ new #[Title('Editar galería')] class extends Component {
         }
 
         $this->newFiles = [];
-        unset($this->albums);
+        unset($this->albums, $this->coverImageId);
 
         Flux::toast(variant: 'success', text: __('Archivos subidos.'));
     }
@@ -157,7 +163,20 @@ new #[Title('Editar galería')] class extends Component {
 
         $media->update(['is_featured' => ! $media->is_featured]);
 
-        unset($this->albums);
+        unset($this->albums, $this->coverImageId);
+    }
+
+    public function setCover(int $mediaId): void
+    {
+        $media = $this->findMedia($mediaId);
+
+        abort_unless($media->isPhoto(), 422);
+
+        $this->gallery->update(['cover_media_id' => $media->id]);
+
+        unset($this->coverImageId);
+
+        Flux::toast(variant: 'success', text: __('Portada actualizada.'));
     }
 
     public function deleteMedia(int $mediaId): void
@@ -167,7 +186,7 @@ new #[Title('Editar galería')] class extends Component {
         Storage::disk($media->disk)->delete($media->path);
         $media->delete();
 
-        unset($this->albums);
+        unset($this->albums, $this->coverImageId);
 
         Flux::toast(variant: 'success', text: __('Archivo eliminado.'));
     }
@@ -364,13 +383,29 @@ new #[Title('Editar galería')] class extends Component {
                 @else
                     <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                         @foreach ($this->activeAlbumMedia as $media)
-                            <div class="relative overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <div wire:key="edit-media-{{ $media->id }}" class="relative overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
                                 @if ($media->isVideo())
-                                    <div class="flex aspect-square items-center justify-center bg-zinc-800">
-                                        <flux:icon name="play-circle" class="size-10 text-white" />
+                                    <div class="relative flex aspect-square items-center justify-center bg-zinc-800">
+                                        <video
+                                            src="{{ route('media.show', $media) }}#t=0.1"
+                                            preload="metadata"
+                                            muted
+                                            playsinline
+                                            class="absolute inset-0 h-full w-full object-cover"
+                                        ></video>
+                                        <flux:icon name="play-circle" class="relative size-10 text-white drop-shadow" />
                                     </div>
                                 @else
                                     <img src="{{ route('media.show', $media) }}" class="aspect-square w-full object-cover" alt="">
+
+                                    <button
+                                        type="button"
+                                        wire:click="setCover({{ $media->id }})"
+                                        title="{{ __('Usar como portada') }}"
+                                        class="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full shadow-sm transition-colors {{ $this->coverImageId === $media->id ? 'bg-accent text-white' : 'bg-white/90 text-zinc-700 hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-200' }}"
+                                    >
+                                        <flux:icon name="star" variant="{{ $this->coverImageId === $media->id ? 'solid' : 'outline' }}" class="size-4" />
+                                    </button>
                                 @endif
 
                                 <div class="flex items-center justify-between gap-1 p-2">

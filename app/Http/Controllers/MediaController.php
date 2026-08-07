@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Actions\Media\GenerateBlurredPreview;
 use App\Actions\Media\GenerateWatermarkedPreview;
 use App\Models\Media;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 class MediaController extends Controller
 {
@@ -36,7 +38,28 @@ class MediaController extends Controller
             return $response;
         }
 
+        if ($media->isVideo()) {
+            return $this->streamVideo($disk, $media->path);
+        }
+
         return $disk->response($media->path);
+    }
+
+    /**
+     * Videos need real HTTP range support for the browser to seek and to
+     * decode a first frame to show as a thumbnail — something the plain
+     * streamed disk response never provides. Redirect to a temporary,
+     * pre-signed URL on cloud disks (S3-compatible, e.g. Supabase) that
+     * natively support ranges; local disk falls back to a range-capable
+     * file response.
+     */
+    protected function streamVideo(FilesystemAdapter $disk, string $path)
+    {
+        try {
+            return redirect()->away($disk->temporaryUrl($path, now()->addMinutes(10)));
+        } catch (RuntimeException) {
+            return response()->file($disk->path($path));
+        }
     }
 
     /**

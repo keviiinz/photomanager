@@ -27,7 +27,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['photographer_id', 'title', 'client_name', 'slug', 'unlock_code', 'location', 'available_until'])]
+#[Fillable(['photographer_id', 'title', 'client_name', 'slug', 'unlock_code', 'cover_media_id', 'location', 'available_until'])]
 class Gallery extends Model
 {
     /** @use HasFactory<GalleryFactory> */
@@ -85,6 +85,26 @@ class Gallery extends Model
     public function albums(): HasMany
     {
         return $this->hasMany(Album::class)->orderBy('position');
+    }
+
+    /**
+     * @return BelongsTo<Media, $this>
+     */
+    public function coverMedia(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'cover_media_id');
+    }
+
+    /**
+     * The photo shown as this gallery's thumbnail: the photographer's explicit
+     * choice if there is one, otherwise the first featured photo, otherwise
+     * just the first photo in the gallery.
+     */
+    public function coverImage(): ?Media
+    {
+        return $this->coverMedia
+            ?? $this->media()->where('type', 'photo')->where('is_featured', true)->orderBy('position')->first()
+            ?? $this->media()->where('type', 'photo')->orderBy('position')->first();
     }
 
     /**

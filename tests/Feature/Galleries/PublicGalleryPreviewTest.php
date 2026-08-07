@@ -74,6 +74,28 @@ class PublicGalleryPreviewTest extends TestCase
         $this->get(route('media.download', $teaser))->assertForbidden();
     }
 
+    public function test_featured_video_is_streamed_with_range_support_for_a_guest(): void
+    {
+        Storage::fake('local');
+        $gallery = Gallery::factory()->create();
+        $album = $gallery->albums()->first();
+
+        Storage::disk('local')->put('galleries/featured.mp4', 'fake-video-bytes');
+
+        $video = $album->media()->create($this->fakeMediaAttributes([
+            'type' => 'video',
+            'is_featured' => true,
+            'path' => 'galleries/featured.mp4',
+            'mime_type' => 'video/mp4',
+        ]));
+
+        // Storage::fake() stubs temporaryUrl() (real S3-compatible disks support
+        // it natively), so a video redirects to a range-capable signed URL
+        // instead of being streamed through the app.
+        $response = $this->get(route('media.show', $video))->assertRedirect();
+        $this->assertStringContainsString('featured.mp4', $response->headers->get('Location'));
+    }
+
     public function test_featured_media_is_served_watermarked_and_cannot_be_downloaded_by_a_guest(): void
     {
         Storage::fake('local');

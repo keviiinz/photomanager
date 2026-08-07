@@ -435,8 +435,15 @@ new #[Layout('layouts::public')] class extends Component {
                             class="block w-full cursor-pointer"
                         >
                             @if ($media->isVideo())
-                                <div class="flex aspect-video items-center justify-center bg-zinc-800">
-                                    <flux:icon name="play-circle" class="size-14 text-white" />
+                                <div class="relative flex aspect-video items-center justify-center bg-zinc-800">
+                                    <video
+                                        src="{{ route('media.show', $media) }}#t=0.1"
+                                        preload="metadata"
+                                        muted
+                                        playsinline
+                                        class="absolute inset-0 h-full w-full object-cover"
+                                    ></video>
+                                    <flux:icon name="play-circle" class="relative size-14 text-white drop-shadow" />
                                 </div>
                             @else
                                 <img

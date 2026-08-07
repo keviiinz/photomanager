@@ -14,6 +14,6 @@ class ExampleTest extends TestCase
         $response = $this->get(route('home'));
 
         $response->assertOk();
-        $response->assertSee('Crear cuenta');
+        $response->assertSee('Registrarme');
     }
 }
