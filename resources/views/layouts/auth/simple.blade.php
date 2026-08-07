@@ -3,9 +3,6 @@
     <head>
         @include('partials.head')
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=instrument-serif:400,400i" rel="stylesheet" />
-
         {{-- This screen has its own light, warm-toned design regardless of the app's dark/light preference. --}}
         <script>document.documentElement.classList.remove('dark');</script>
         <style>
