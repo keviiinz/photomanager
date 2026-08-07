@@ -39,6 +39,9 @@ class GalleryZipDownloadTest extends TestCase
         $zip = new ZipArchive;
         $zip->open($response->getFile()->getPathname());
         $this->assertSame(2, $zip->count());
+        $base = $gallery->downloadFilenameBase();
+        $this->assertSame($base.'.jpg', $zip->getNameIndex(0));
+        $this->assertSame($base.'-1.jpg', $zip->getNameIndex(1));
         $zip->close();
     }
 
@@ -71,7 +74,31 @@ class GalleryZipDownloadTest extends TestCase
         $zip = new ZipArchive;
         $zip->open($response->getFile()->getPathname());
         $this->assertSame(1, $zip->count());
-        $this->assertSame('mine.jpg', $zip->getNameIndex(0));
+        $this->assertSame($gallery->downloadFilenameBase().'.jpg', $zip->getNameIndex(0));
+        $zip->close();
+    }
+
+    public function test_guest_who_unlocked_via_cookie_can_download_a_zip_of_selected_media(): void
+    {
+        Storage::fake('local');
+
+        $gallery = Gallery::factory()->create();
+        $album = $gallery->albums()->first();
+
+        Storage::disk('local')->put('galleries/one.jpg', 'contents-one');
+
+        $one = $album->media()->create($this->fakeMediaAttributes(['path' => 'galleries/one.jpg', 'original_name' => 'one.jpg']));
+
+        $response = $this->withCookie("gallery_unlocked_{$gallery->id}", '1')
+            ->post(route('galleries.download-selection', $gallery), [
+                'media_ids' => [$one->id],
+            ]);
+
+        $response->assertOk();
+
+        $zip = new ZipArchive;
+        $zip->open($response->getFile()->getPathname());
+        $this->assertSame(1, $zip->count());
         $zip->close();
     }
 

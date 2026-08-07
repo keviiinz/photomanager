@@ -3,7 +3,6 @@
 namespace Tests\Feature\Galleries;
 
 use App\Models\Gallery;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -64,6 +63,27 @@ class PublicGalleryPreviewTest extends TestCase
         $this->assertTrue(Storage::disk('local')->exists('galleries/featured.watermarked.jpg'));
 
         $this->get(route('media.download', $featured))->assertForbidden();
+    }
+
+    public function test_downloaded_media_is_named_after_the_gallery_instead_of_the_original_filename(): void
+    {
+        Storage::fake('local');
+        $gallery = Gallery::factory()->create(['title' => 'Boda de Ana & Marco']);
+        $album = $gallery->albums()->first();
+        Storage::disk('local')->put('galleries/original-camera-name.jpg', 'fake-bytes');
+
+        $media = $album->media()->create($this->fakeMediaAttributes([
+            'is_featured' => true,
+            'path' => 'galleries/original-camera-name.jpg',
+            'original_name' => 'original-camera-name.jpg',
+        ]));
+
+        $response = $this->withCookie("gallery_unlocked_{$gallery->id}", '1')
+            ->get(route('media.download', $media));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Disposition');
+        $this->assertStringContainsString('Boda de Ana & Marco.jpg', $response->headers->get('Content-Disposition'));
     }
 
     public function test_featured_photo_response_is_never_cached_since_it_changes_after_unlock(): void

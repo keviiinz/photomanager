@@ -39,9 +39,11 @@ class GalleryZipDownloadController extends Controller
         $zip->open($zipPath, ZipArchive::CREATE);
 
         $usedNames = [];
+        $filenameBase = $gallery->downloadFilenameBase();
 
         foreach ($media as $item) {
-            $name = $item->original_name;
+            $extension = pathinfo($item->original_name, PATHINFO_EXTENSION);
+            $name = $filenameBase.($extension !== '' ? ".{$extension}" : '');
             $usedNames[$name] = ($usedNames[$name] ?? -1) + 1;
 
             if ($usedNames[$name] > 0) {

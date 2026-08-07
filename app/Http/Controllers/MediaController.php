@@ -42,16 +42,21 @@ class MediaController extends Controller
      */
     public function download(Request $request, Media $media)
     {
-        abort_unless($media->album->gallery->isUnlockedFor($request->user()), 403);
+        $gallery = $media->album->gallery;
+
+        abort_unless($gallery->isUnlockedFor($request->user()), 403);
 
         activity('gallery')
             ->causedBy($request->user())
-            ->performedOn($media->album->gallery)
+            ->performedOn($gallery)
             ->withProperties(['media_id' => $media->id, 'original_name' => $media->original_name])
             ->event('media_downloaded')
-            ->log("Descargó el archivo \"{$media->original_name}\" de la galería \"{$media->album->gallery->title}\"");
+            ->log("Descargó el archivo \"{$media->original_name}\" de la galería \"{$gallery->title}\"");
 
-        return Storage::disk($media->disk)->download($media->path, $media->original_name);
+        $extension = pathinfo($media->original_name, PATHINFO_EXTENSION);
+        $filename = $gallery->downloadFilenameBase().($extension !== '' ? ".{$extension}" : '');
+
+        return Storage::disk($media->disk)->download($media->path, $filename);
     }
 
     protected function needsWatermark(Media $media, Request $request): bool

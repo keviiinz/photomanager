@@ -258,33 +258,45 @@ new #[Title('Editar galería')] class extends Component {
             </form>
         </section>
 
-        {{-- Unlock code --}}
-        <section class="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
-            <flux:heading class="mb-2">{{ __('Código de desbloqueo') }}</flux:heading>
-            <flux:text class="mb-4 text-zinc-500">
-                {{ __('Por seguridad, el código no se puede volver a mostrar más tarde. Puedes generar uno nuevo (invalida el anterior).') }}
-            </flux:text>
+        <div class="grid gap-8 sm:grid-cols-2">
+            {{-- Public link --}}
+            <section class="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
+                <flux:heading class="mb-2">{{ __('Enlace de la galería') }}</flux:heading>
+                <flux:text class="mb-4 text-zinc-500">
+                    {{ __('Compártelo con tu cliente para que vea la galería directamente.') }}
+                </flux:text>
 
-            @if ($revealedCode)
-                <div class="mb-4 flex flex-wrap items-center gap-3 rounded-lg border-2 border-accent bg-accent/10 p-4">
-                    <div class="flex-1">
-                        <flux:text class="mb-1 font-medium">{{ __('Este es tu código — guárdalo ahora, no se volverá a mostrar:') }}</flux:text>
-                        <flux:input :value="$revealedCode" readonly copyable class="max-w-xs font-mono" />
+                <flux:input :value="route('galleries.show', $gallery)" readonly copyable />
+            </section>
+
+            {{-- Unlock code --}}
+            <section class="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
+                <flux:heading class="mb-2">{{ __('Código de desbloqueo') }}</flux:heading>
+                <flux:text class="mb-4 text-zinc-500">
+                    {{ __('Por seguridad, el código no se puede volver a mostrar más tarde. Puedes generar uno nuevo (invalida el anterior).') }}
+                </flux:text>
+
+                @if ($revealedCode)
+                    <div class="mb-4 flex flex-wrap items-center gap-3 rounded-lg border-2 border-accent bg-accent/10 p-4">
+                        <div class="flex-1">
+                            <flux:text class="mb-1 font-medium">{{ __('Este es tu código — guárdalo ahora, no se volverá a mostrar:') }}</flux:text>
+                            <flux:input :value="$revealedCode" readonly copyable class="max-w-xs font-mono" />
+                        </div>
+                        <flux:button size="sm" variant="ghost" wire:click="dismissRevealedCode">
+                            {{ __('Ya lo guardé') }}
+                        </flux:button>
                     </div>
-                    <flux:button size="sm" variant="ghost" wire:click="dismissRevealedCode">
-                        {{ __('Ya lo guardé') }}
-                    </flux:button>
-                </div>
-            @endif
+                @endif
 
-            <flux:button
-                variant="danger"
-                wire:click="regenerateCode"
-                wire:confirm="{{ __('¿Regenerar el código? El código anterior dejará de funcionar.') }}"
-            >
-                {{ __('Regenerar código') }}
-            </flux:button>
-        </section>
+                <flux:button
+                    variant="danger"
+                    wire:click="regenerateCode"
+                    wire:confirm="{{ __('¿Regenerar el código? El código anterior dejará de funcionar.') }}"
+                >
+                    {{ __('Regenerar código') }}
+                </flux:button>
+            </section>
+        </div>
 
         {{-- Albums --}}
         <section class="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">

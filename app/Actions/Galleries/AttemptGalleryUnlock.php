@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class AttemptGalleryUnlock
 {
-    public function __invoke(Gallery $gallery, User $user, string $code, string $ip): UnlockAttemptResult
+    public function __invoke(Gallery $gallery, ?User $user, string $code, string $ip): UnlockAttemptResult
     {
         $key = "gallery-unlock:{$gallery->id}:{$ip}";
 
@@ -32,7 +32,12 @@ class AttemptGalleryUnlock
         }
 
         RateLimiter::clear($key);
-        $gallery->unlockFor($user);
+
+        if ($user) {
+            $gallery->unlockFor($user);
+        } else {
+            $gallery->unlockForGuest();
+        }
 
         activity('gallery')
             ->causedBy($user)

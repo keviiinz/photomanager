@@ -9,9 +9,10 @@ Route::get('media/{media}/descargar', [MediaController::class, 'download'])->nam
 
 Route::livewire('g/{gallery}', 'pages::galleries.show')->name('galleries.show');
 
-Route::middleware(['auth'])->group(function () {
-    Route::post('galerias/{gallery}/descargar-seleccion', GalleryZipDownloadController::class)->name('galleries.download-selection');
-});
+// Not behind `auth`: a gallery can be unlocked by a guest cookie, so anyone
+// who has unlocked it — with or without an account — can download from it.
+// GalleryZipDownloadController re-checks Gallery::isUnlockedFor() itself.
+Route::post('galerias/{gallery}/descargar-seleccion', GalleryZipDownloadController::class)->name('galleries.download-selection');
 
 Route::middleware(['auth', 'verified', 'role:photographer'])->group(function () {
     Route::livewire('galerias', 'pages::galleries.index')->name('galleries.index');

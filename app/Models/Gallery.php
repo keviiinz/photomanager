@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cookie;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -114,17 +115,34 @@ class Gallery extends Model
         return $this->savedBy()->where('users.id', $user->id)->exists();
     }
 
+    /**
+     * A gallery can be unlocked either by an account (tracked in the `gallery_user`
+     * pivot) or, for visitors without an account, by a signed cookie set in
+     * {@see unlockForGuest()} — having an account is a convenience, not a requirement.
+     */
     public function isUnlockedFor(?User $user): bool
     {
-        if (! $user) {
-            return false;
+        if ($user) {
+            if ($user->id === $this->photographer_id) {
+                return true;
+            }
+
+            if ($this->savedBy()->where('users.id', $user->id)->whereNotNull('unlocked_at')->exists()) {
+                return true;
+            }
         }
 
-        if ($user->id === $this->photographer_id) {
-            return true;
-        }
+        return request()->hasCookie($this->guestUnlockCookieName());
+    }
 
-        return $this->savedBy()->where('users.id', $user->id)->whereNotNull('unlocked_at')->exists();
+    public function unlockForGuest(): void
+    {
+        Cookie::queue(Cookie::forever($this->guestUnlockCookieName(), '1'));
+    }
+
+    protected function guestUnlockCookieName(): string
+    {
+        return "gallery_unlocked_{$this->id}";
     }
 
     /**
@@ -145,5 +163,17 @@ class Gallery extends Model
         $this->savedBy()->syncWithoutDetaching([
             $user->id => ['unlocked_at' => now()],
         ]);
+    }
+
+    /**
+     * The gallery's title, stripped of characters that aren't safe in a filename,
+     * used as the base name for downloaded files instead of the original camera
+     * filename.
+     */
+    public function downloadFilenameBase(): string
+    {
+        $safe = trim(preg_replace('/[\\\\\/:*?"<>|]+/', ' ', $this->title));
+
+        return $safe !== '' ? $safe : 'galeria';
     }
 }

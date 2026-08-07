@@ -143,10 +143,6 @@ new #[Layout('layouts::public')] class extends Component {
 
     public function unlock(): void
     {
-        if (! Auth::check()) {
-            return;
-        }
-
         $result = app(AttemptGalleryUnlock::class)(
             $this->gallery,
             Auth::user(),
@@ -166,9 +162,19 @@ new #[Layout('layouts::public')] class extends Component {
     }
 }; ?>
 
-<div class="mx-auto flex max-w-5xl flex-col gap-8 pb-24">
-    <div>
-        <flux:heading size="xl">{{ $gallery->title }}</flux:heading>
+<div class="mx-auto flex max-w-6xl flex-col gap-16 pb-32">
+    <div class="mx-auto flex max-w-2xl flex-col items-center gap-3 pt-10 text-center sm:pt-16">
+        <span class="text-xs font-medium tracking-[0.2em] text-zinc-500 uppercase">
+            {{ $gallery->client_name }}
+        </span>
+
+        <h1
+            class="text-4xl leading-tight text-zinc-800 sm:text-5xl dark:text-zinc-50"
+            style="font-family: 'Instrument Serif', ui-serif, serif;"
+        >
+            {{ $gallery->title }}
+        </h1>
+
         <flux:text class="text-zinc-500">
             {{ __('Por :photographer', ['photographer' => $gallery->photographer->name]) }}
             · {{ $gallery->created_at->translatedFormat('d M Y') }}
@@ -176,106 +182,284 @@ new #[Layout('layouts::public')] class extends Component {
                 · {{ $gallery->location }}
             @endif
         </flux:text>
+
         @if ($gallery->available_until)
             <flux:text class="text-sm text-zinc-500">
                 {{ __('Disponible hasta :date', ['date' => $gallery->available_until->translatedFormat('d M Y')]) }}
             </flux:text>
         @endif
+
+        <div
+            wire:key="gallery-actions-{{ $activeAlbumId }}"
+            x-data="{
+                open: false,
+                photos: @js($this->activeAlbumMedia->filter->isPhoto()->values()->map(fn ($media) => route('media.show', $media))->all()),
+                index: 0,
+                visible: true,
+                interval: null,
+                copied: false,
+                start() {
+                    if (! this.photos.length) return;
+                    this.open = true;
+                    this.index = 0;
+                    this.visible = true;
+                    this.restartAutoplay();
+                },
+                advance(direction) {
+                    this.visible = false;
+                    setTimeout(() => {
+                        this.index = (this.index + direction + this.photos.length) % this.photos.length;
+                        this.visible = true;
+                    }, 400);
+                },
+                manualAdvance(direction) {
+                    this.advance(direction);
+                    this.restartAutoplay();
+                },
+                restartAutoplay() {
+                    clearInterval(this.interval);
+                    this.interval = setInterval(() => this.advance(1), 3500);
+                },
+                stop() {
+                    this.open = false;
+                    clearInterval(this.interval);
+                },
+                share() {
+                    const url = @js(route('galleries.show', $gallery));
+                    const title = @js($gallery->title);
+
+                    if (navigator.share) {
+                        navigator.share({ title, url }).catch(() => {});
+                        return;
+                    }
+
+                    navigator.clipboard.writeText(url);
+                    this.copied = true;
+                    setTimeout(() => this.copied = false, 2000);
+                },
+            }"
+            class="mt-2 flex items-center gap-3"
+        >
+            <button
+                type="button"
+                x-on:click="share()"
+                class="flex size-11 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                aria-label="{{ __('Compartir') }}"
+            >
+                <flux:icon x-show="!copied" name="share" class="size-5" />
+                <flux:icon x-show="copied" x-cloak name="check" class="size-5" />
+            </button>
+
+            @if ($this->activeAlbumMedia->contains->isPhoto())
+                <button
+                    type="button"
+                    x-on:click="start()"
+                    class="flex size-11 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                    aria-label="{{ __('Ver en pantalla completa') }}"
+                >
+                    <flux:icon name="play" class="size-5" />
+                </button>
+            @endif
+
+            <div
+                x-show="open"
+                x-cloak
+                x-on:keydown.escape.window="stop()"
+                x-on:keydown.arrow-left.window="open && manualAdvance(-1)"
+                x-on:keydown.arrow-right.window="open && manualAdvance(1)"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black"
+            >
+                <button
+                    type="button"
+                    x-on:click="stop()"
+                    class="absolute top-6 right-6 flex size-11 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                    aria-label="{{ __('Cerrar') }}"
+                >
+                    <flux:icon name="x-mark" class="size-6" />
+                </button>
+
+                <button
+                    type="button"
+                    x-show="photos.length > 1"
+                    x-on:click="manualAdvance(-1)"
+                    class="absolute top-1/2 left-3 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-6"
+                    aria-label="{{ __('Anterior') }}"
+                >
+                    <flux:icon name="chevron-left" class="size-6" />
+                </button>
+
+                <button
+                    type="button"
+                    x-show="photos.length > 1"
+                    x-on:click="manualAdvance(1)"
+                    class="absolute top-1/2 right-3 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-6"
+                    aria-label="{{ __('Siguiente') }}"
+                >
+                    <flux:icon name="chevron-right" class="size-6" />
+                </button>
+
+                <img
+                    x-show="open"
+                    :src="photos[index]"
+                    x-bind:class="visible ? 'opacity-100' : 'opacity-0'"
+                    class="max-h-screen max-w-screen object-contain transition-opacity duration-700"
+                    alt=""
+                >
+            </div>
+        </div>
     </div>
 
     @unless ($this->isUnlocked)
-        <div class="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
-            <flux:heading class="mb-2">{{ __('¿Quieres ver el resto de las fotos?') }}</flux:heading>
+        <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-[#e2d6d0] bg-[#f8f3f0] p-8 text-center shadow-[0_1px_2px_rgba(61,56,53,0.04),0_12px_28px_-10px_rgba(61,56,53,0.18)] dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:heading>{{ __('¿Quieres ver el resto de las fotos?') }}</flux:heading>
+            <flux:text class="text-zinc-500">
+                {{ __('Ingresa el código que te compartió el fotógrafo. No necesitas cuenta para verlas ni descargarlas.') }}
+            </flux:text>
 
-            @guest
-                <flux:text class="mb-4 text-zinc-500">
-                    {{ __('Inicia sesión o regístrate como cliente y vuelve a esta página para ingresar tu código.') }}
-                </flux:text>
-                <div class="flex gap-2">
-                    <flux:button :href="route('login')" wire:navigate>{{ __('Iniciar sesión') }}</flux:button>
-                    <flux:button :href="route('register')" variant="primary" wire:navigate>{{ __('Registrarme') }}</flux:button>
-                </div>
-            @else
-                <form wire:submit="unlock" class="flex max-w-sm gap-2">
-                    <flux:input wire:model="code" :placeholder="__('Código de acceso')" />
-                    <flux:button type="submit" variant="primary">{{ __('Desbloquear') }}</flux:button>
-                </form>
-                @error('code')
-                    <flux:text class="mt-2 text-red-600 dark:text-red-400">{{ $message }}</flux:text>
-                @enderror
-            @endguest
+            <form wire:submit="unlock" class="flex w-full flex-col gap-3">
+                <flux:input wire:model="code" :placeholder="__('Código de acceso')" />
+                <flux:button type="submit" variant="primary">{{ __('Desbloquear') }}</flux:button>
+            </form>
+
+            @error('code')
+                <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+            @enderror
+
+            <flux:text class="text-xs text-zinc-400">
+                {{ __('¿Quieres guardar esta galería en tu cuenta para volver a ella después?') }}
+                <flux:link :href="route('register')" wire:navigate>{{ __('Regístrate') }}</flux:link>
+            </flux:text>
         </div>
     @endunless
 
     @if ($this->albums->count() > 1)
-        <div class="flex flex-wrap gap-2">
+        <div class="mx-auto flex flex-wrap justify-center gap-6 border-b border-zinc-200 dark:border-zinc-700">
             @foreach ($this->albums as $album)
-                <flux:button
-                    size="sm"
-                    :variant="$album->id === $activeAlbumId ? 'primary' : 'ghost'"
+                <button
+                    type="button"
+                    wire:key="album-tab-{{ $album->id }}"
                     wire:click="selectAlbum({{ $album->id }})"
+                    class="cursor-pointer border-b-2 pb-3 text-xs font-medium tracking-[0.15em] uppercase transition-colors {{ $album->id === $activeAlbumId ? 'border-zinc-800 text-zinc-800 dark:border-zinc-50 dark:text-zinc-50' : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300' }}"
                 >
                     {{ $album->title }}
-                </flux:button>
+                </button>
             @endforeach
         </div>
     @endif
 
     @if ($this->activeAlbumMedia->isEmpty())
-        <flux:text class="text-zinc-500">{{ __('No hay fotos disponibles en este álbum todavía.') }}</flux:text>
+        <flux:text class="text-center text-zinc-500">{{ __('No hay fotos disponibles en este álbum todavía.') }}</flux:text>
     @else
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            @foreach ($this->activeAlbumMedia as $media)
-                <div class="relative overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
-                    <button type="button" wire:click="openLightbox({{ $media->id }})" class="block w-full cursor-pointer">
-                        @if ($media->isVideo())
-                            <div class="flex aspect-square items-center justify-center bg-zinc-800">
-                                <flux:icon name="play-circle" class="size-10 text-white" />
-                            </div>
-                        @else
-                            <img src="{{ route('media.show', $media) }}" class="aspect-square w-full object-cover" alt="">
-                        @endif
+        <div
+            x-data="{ columns: localStorage.getItem('galleryColumns') === '1' ? 1 : 2 }"
+            x-effect="localStorage.setItem('galleryColumns', columns)"
+            class="flex flex-col gap-4"
+        >
+            <div class="flex items-center justify-between">
+                <flux:text class="text-sm text-zinc-400">
+                    {{ trans_choice(':count foto|:count fotos', $this->activeAlbumMedia->count()) }}
+                </flux:text>
+
+                <div class="flex items-center gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+                    <button
+                        type="button"
+                        x-on:click="columns = 1"
+                        x-bind:class="columns === 1 ? 'bg-white text-zinc-800 shadow-sm dark:bg-zinc-700 dark:text-zinc-50' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'"
+                        class="flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors"
+                        aria-label="{{ __('Ver en 1 columna') }}"
+                    >
+                        <flux:icon name="bars-3" class="size-4" />
                     </button>
-
-                    @if ($this->isUnlocked)
-                        <label class="absolute top-2 left-2 flex items-center gap-1 rounded bg-black/60 px-2 py-1">
-                            <input
-                                type="checkbox"
-                                wire:click="toggleSelected({{ $media->id }})"
-                                @checked(in_array($media->id, $selected, true))
-                            >
-                            <span class="text-xs text-white">{{ __('Seleccionar') }}</span>
-                        </label>
-
-                        <a href="{{ route('media.download', $media) }}" class="absolute top-2 right-2 rounded bg-black/60 p-1.5 text-white">
-                            <flux:icon name="arrow-down-tray" class="size-4" />
-                        </a>
-                    @endif
+                    <button
+                        type="button"
+                        x-on:click="columns = 2"
+                        x-bind:class="columns === 2 ? 'bg-white text-zinc-800 shadow-sm dark:bg-zinc-700 dark:text-zinc-50' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'"
+                        class="flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors"
+                        aria-label="{{ __('Ver en 2 columnas') }}"
+                    >
+                        <flux:icon name="squares-2x2" class="size-4" />
+                    </button>
                 </div>
-            @endforeach
+            </div>
+
+            <div x-bind:class="columns === 1 ? 'columns-1' : 'columns-2'" class="gap-x-3 sm:gap-x-8">
+                @foreach ($this->activeAlbumMedia as $media)
+                    <div
+                        wire:key="media-{{ $media->id }}"
+                        class="group relative mb-3 break-inside-avoid overflow-hidden ring-zinc-800 transition-shadow has-[:checked]:ring-4 sm:mb-10 dark:ring-zinc-50"
+                    >
+                        <button type="button" wire:click="openLightbox({{ $media->id }})" class="block w-full cursor-pointer">
+                            @if ($media->isVideo())
+                                <div class="flex aspect-video items-center justify-center bg-zinc-800">
+                                    <flux:icon name="play-circle" class="size-14 text-white" />
+                                </div>
+                            @else
+                                <img
+                                    src="{{ route('media.show', $media) }}"
+                                    alt=""
+                                    loading="lazy"
+                                    x-data="{ loaded: false }"
+                                    x-init="loaded = $el.complete"
+                                    x-on:load="loaded = true"
+                                    x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
+                                    class="block h-auto w-full transition duration-500 group-hover:scale-[1.015]"
+                                >
+                            @endif
+                        </button>
+
+                        @if ($this->isUnlocked)
+                            <label class="absolute top-3 left-3 flex size-8 cursor-pointer items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm ring-1 ring-black/10 transition-all group-hover:opacity-100 has-[:checked]:opacity-100 has-[:checked]:bg-zinc-800 has-[:checked]:ring-zinc-800 dark:bg-zinc-900/90 dark:ring-white/20 dark:has-[:checked]:bg-zinc-50 dark:has-[:checked]:ring-zinc-50">
+                                <input
+                                    type="checkbox"
+                                    class="peer sr-only"
+                                    wire:click="toggleSelected({{ $media->id }})"
+                                    @checked(in_array($media->id, $selected, true))
+                                >
+                                <flux:icon name="check" class="size-4 text-transparent transition-colors peer-checked:text-white dark:peer-checked:text-zinc-900" />
+                            </label>
+
+                            <a
+                                href="{{ route('media.download', $media) }}"
+                                class="absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 dark:bg-zinc-900/90"
+                            >
+                                <flux:icon name="arrow-down-tray" class="size-4 text-zinc-800 dark:text-zinc-100" />
+                            </a>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
         </div>
     @endif
 
     @if ($this->isUnlocked && $this->activeAlbumMedia->isNotEmpty())
-        <div class="fixed bottom-0 left-0 right-0 flex items-center justify-between gap-4 border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:text>
+        <div class="fixed inset-x-0 bottom-6 z-10 mx-auto flex w-fit max-w-[calc(100%-2rem)] flex-wrap items-center gap-4 rounded-full border border-[#e2d6d0] bg-[#f8f3f0] px-6 py-3 shadow-[0_4px_16px_-4px_rgba(61,56,53,0.35)] dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:text class="whitespace-nowrap">
                 {{ trans_choice(':count elemento seleccionado|:count elementos seleccionados', count($selected), ['count' => count($selected)]) }}
                 · {{ number_format($this->selectedTotalBytes / 1_000_000, 1) }} MB
             </flux:text>
 
-            <div class="flex gap-2">
-                <flux:button variant="ghost" wire:click="selectAllInActiveAlbum">{{ __('Seleccionar todo el álbum') }}</flux:button>
+            <flux:button size="sm" variant="ghost" wire:click="selectAllInActiveAlbum">{{ __('Seleccionar todo') }}</flux:button>
 
-                <form method="POST" action="{{ route('galleries.download-selection', $gallery) }}">
-                    @csrf
-                    @foreach ($selected as $mediaId)
-                        <input type="hidden" name="media_ids[]" value="{{ $mediaId }}">
-                    @endforeach
-                    <flux:button type="submit" variant="primary" :disabled="empty($selected)">
-                        {{ __('Descargar selección (.zip)') }}
-                    </flux:button>
-                </form>
-            </div>
+            <form
+                method="POST"
+                action="{{ route('galleries.download-selection', $gallery) }}"
+                x-data="{ downloading: false }"
+                x-on:submit="downloading = true; setTimeout(() => downloading = false, 6000)"
+            >
+                @csrf
+                @foreach ($selected as $mediaId)
+                    <input type="hidden" name="media_ids[]" value="{{ $mediaId }}">
+                @endforeach
+                <flux:button
+                    size="sm"
+                    type="submit"
+                    variant="primary"
+                    x-bind:disabled="downloading || @js(empty($selected))"
+                >
+                    <span x-show="!downloading" x-cloak>{{ __('Descargar (.zip)') }}</span>
+                    <span x-show="downloading" x-cloak>{{ __('Preparando…') }}</span>
+                </flux:button>
+            </form>
         </div>
     @endif
 
