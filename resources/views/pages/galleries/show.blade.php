@@ -58,7 +58,14 @@ new #[Layout('layouts::public')] class extends Component {
     {
         $media = $this->activeAlbum?->media()->get() ?? collect();
 
-        return $this->isUnlocked ? $media : $media->where('is_featured', true)->values();
+        if ($this->isUnlocked) {
+            return $media;
+        }
+
+        $featured = $media->where('is_featured', true);
+        $teasers = $media->where('is_featured', false)->filter->isTeaser();
+
+        return $featured->merge($teasers)->values();
     }
 
     #[Computed]
@@ -310,25 +317,54 @@ new #[Layout('layouts::public')] class extends Component {
     </div>
 
     @unless ($this->isUnlocked)
-        <div class="mx-auto flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-[#e2d6d0] bg-[#f8f3f0] p-8 text-center shadow-[0_1px_2px_rgba(61,56,53,0.04),0_12px_28px_-10px_rgba(61,56,53,0.18)] dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:heading>{{ __('¿Quieres ver el resto de las fotos?') }}</flux:heading>
-            <flux:text class="text-zinc-500">
-                {{ __('Ingresa el código que te compartió el fotógrafo. No necesitas cuenta para verlas ni descargarlas.') }}
-            </flux:text>
+        <div
+            x-data="{ open: false }"
+            x-on:open-unlock-modal.window="open = true; $nextTick(() => $refs.codeInput.focus())"
+        >
+            <div class="fixed right-6 bottom-6 z-40">
+                <flux:button
+                    type="button"
+                    x-on:click="open = true; $nextTick(() => $refs.codeInput.focus())"
+                    variant="primary"
+                    icon="lock-closed"
+                    class="shadow-lg"
+                >
+                    {{ __('Tengo un código') }}
+                </flux:button>
+            </div>
 
-            <form wire:submit="unlock" class="flex w-full flex-col gap-3">
-                <flux:input wire:model="code" :placeholder="__('Código de acceso')" />
-                <flux:button type="submit" variant="primary">{{ __('Desbloquear') }}</flux:button>
-            </form>
+            <div
+                x-show="open"
+                x-cloak
+                x-transition.opacity
+                x-on:keydown.escape.window="open = false"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
+            >
+                <div
+                    x-on:click.outside="open = false"
+                    x-transition
+                    class="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-[#e2d6d0] bg-[#f8f3f0] p-8 text-center shadow-[0_4px_16px_-4px_rgba(61,56,53,0.35)] dark:border-zinc-700 dark:bg-zinc-900"
+                >
+                    <flux:heading>{{ __('¿Quieres ver el resto de las fotos?') }}</flux:heading>
+                    <flux:text class="text-zinc-500">
+                        {{ __('Ingresa el código que te compartió el fotógrafo. No necesitas cuenta para verlas ni descargarlas.') }}
+                    </flux:text>
 
-            @error('code')
-                <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
-            @enderror
+                    <form wire:submit="unlock" class="flex w-full flex-col gap-3">
+                        <flux:input x-ref="codeInput" wire:model="code" :placeholder="__('Código de acceso')" />
+                        <flux:button type="submit" variant="primary">{{ __('Desbloquear') }}</flux:button>
+                    </form>
 
-            <flux:text class="text-xs text-zinc-400">
-                {{ __('¿Quieres guardar esta galería en tu cuenta para volver a ella después?') }}
-                <flux:link :href="route('register')" wire:navigate>{{ __('Regístrate') }}</flux:link>
-            </flux:text>
+                    @error('code')
+                        <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                    @enderror
+
+                    <flux:text class="text-xs text-zinc-400">
+                        {{ __('¿Quieres guardar esta galería en tu cuenta para volver a ella después?') }}
+                        <flux:link :href="route('register')" wire:navigate>{{ __('Regístrate') }}</flux:link>
+                    </flux:text>
+                </div>
+            </div>
         </div>
     @endunless
 
@@ -384,11 +420,20 @@ new #[Layout('layouts::public')] class extends Component {
 
             <div x-bind:class="columns === 1 ? 'columns-1' : 'columns-2'" class="gap-x-3 sm:gap-x-8">
                 @foreach ($this->activeAlbumMedia as $media)
+                    @php $isTeaser = ! $this->isUnlocked && ! $media->is_featured; @endphp
                     <div
                         wire:key="media-{{ $media->id }}"
                         class="group relative mb-3 break-inside-avoid overflow-hidden ring-zinc-800 transition-shadow has-[:checked]:ring-4 sm:mb-10 dark:ring-zinc-50"
                     >
-                        <button type="button" wire:click="openLightbox({{ $media->id }})" class="block w-full cursor-pointer">
+                        <button
+                            type="button"
+                            @if ($isTeaser)
+                                x-on:click="$dispatch('open-unlock-modal')"
+                            @else
+                                wire:click="openLightbox({{ $media->id }})"
+                            @endif
+                            class="block w-full cursor-pointer"
+                        >
                             @if ($media->isVideo())
                                 <div class="flex aspect-video items-center justify-center bg-zinc-800">
                                     <flux:icon name="play-circle" class="size-14 text-white" />
@@ -402,8 +447,20 @@ new #[Layout('layouts::public')] class extends Component {
                                     x-init="loaded = $el.complete"
                                     x-on:load="loaded = true"
                                     x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
-                                    class="block h-auto w-full transition duration-500 group-hover:scale-[1.015]"
+                                    class="block h-auto w-full transition duration-500 {{ $isTeaser ? 'scale-110 blur-lg' : 'group-hover:scale-[1.015]' }}"
                                 >
+                            @endif
+
+                            @if ($isTeaser)
+                                <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/45 p-4 text-center">
+                                    <flux:icon name="lock-closed" class="size-6 text-white" />
+                                    <flux:text class="text-sm font-medium text-white">
+                                        {{ __('¿Quieres ver las demás fotos?') }}
+                                    </flux:text>
+                                    <flux:text class="text-xs text-white/80">
+                                        {{ __('Ingresa el código de desbloqueo') }}
+                                    </flux:text>
+                                </div>
                             @endif
                         </button>
 

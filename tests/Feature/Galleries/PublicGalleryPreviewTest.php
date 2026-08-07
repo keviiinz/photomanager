@@ -12,35 +12,66 @@ class PublicGalleryPreviewTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_only_sees_featured_media_in_the_public_gallery(): void
+    public function test_guest_sees_featured_media_plus_up_to_two_teasers_in_the_public_gallery(): void
     {
         $gallery = Gallery::factory()->create();
         $album = $gallery->albums()->first();
 
-        $featured = $album->media()->create($this->fakeMediaAttributes(['is_featured' => true]));
-        $hidden = $album->media()->create($this->fakeMediaAttributes(['is_featured' => false]));
+        $featured = $album->media()->create($this->fakeMediaAttributes(['is_featured' => true, 'position' => 0]));
+        $teaserOne = $album->media()->create($this->fakeMediaAttributes(['is_featured' => false, 'position' => 1]));
+        $teaserTwo = $album->media()->create($this->fakeMediaAttributes(['is_featured' => false, 'position' => 2]));
+        $stillHidden = $album->media()->create($this->fakeMediaAttributes(['is_featured' => false, 'position' => 3]));
 
         $component = Livewire::test('pages::galleries.show', ['gallery' => $gallery]);
 
         $visibleIds = $component->get('activeAlbumMedia')->pluck('id')->all();
 
         $this->assertContains($featured->id, $visibleIds);
-        $this->assertNotContains($hidden->id, $visibleIds);
+        $this->assertContains($teaserOne->id, $visibleIds);
+        $this->assertContains($teaserTwo->id, $visibleIds);
+        $this->assertNotContains($stillHidden->id, $visibleIds);
     }
 
-    public function test_non_featured_media_cannot_be_viewed_directly_by_a_guest(): void
+    public function test_non_featured_media_beyond_the_teaser_limit_cannot_be_viewed_directly_by_a_guest(): void
     {
         Storage::fake('local');
         $gallery = Gallery::factory()->create();
         $album = $gallery->albums()->first();
-        Storage::disk('local')->put('galleries/hidden.jpg', 'fake-bytes');
 
+        $album->media()->create($this->fakeMediaAttributes(['is_featured' => false, 'position' => 1]));
+        $album->media()->create($this->fakeMediaAttributes(['is_featured' => false, 'position' => 2]));
+
+        Storage::disk('local')->put('galleries/hidden.jpg', 'fake-bytes');
         $hidden = $album->media()->create($this->fakeMediaAttributes([
             'is_featured' => false,
+            'position' => 3,
             'path' => 'galleries/hidden.jpg',
         ]));
 
         $this->get(route('media.show', $hidden))->assertForbidden();
+    }
+
+    public function test_teaser_photo_is_served_blurred_and_cannot_be_downloaded_by_a_guest(): void
+    {
+        Storage::fake('local');
+        $gallery = Gallery::factory()->create();
+        $album = $gallery->albums()->first();
+
+        $image = imagecreatetruecolor(200, 150);
+        ob_start();
+        imagejpeg($image);
+        Storage::disk('local')->put('galleries/teaser.jpg', ob_get_clean());
+
+        $teaser = $album->media()->create($this->fakeMediaAttributes([
+            'is_featured' => false,
+            'position' => 1,
+            'path' => 'galleries/teaser.jpg',
+        ]));
+
+        $this->get(route('media.show', $teaser))->assertOk();
+        $this->assertTrue(Storage::disk('local')->exists('galleries/teaser.blurred.jpg'));
+
+        $this->get(route('media.download', $teaser))->assertForbidden();
     }
 
     public function test_featured_media_is_served_watermarked_and_cannot_be_downloaded_by_a_guest(): void

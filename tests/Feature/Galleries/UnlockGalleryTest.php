@@ -31,6 +31,19 @@ class UnlockGalleryTest extends TestCase
         Storage::fake('local');
         $gallery = Gallery::factory()->create();
         $album = $gallery->albums()->first();
+
+        // Two teaser slots ahead of it, so this one stays genuinely locked pre-unlock.
+        $album->media()->create([
+            'type' => 'photo', 'disk' => 'local', 'path' => 'galleries/teaser-one.jpg',
+            'original_name' => 'teaser-one.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1000,
+            'is_featured' => false, 'position' => 1,
+        ]);
+        $album->media()->create([
+            'type' => 'photo', 'disk' => 'local', 'path' => 'galleries/teaser-two.jpg',
+            'original_name' => 'teaser-two.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1000,
+            'is_featured' => false, 'position' => 2,
+        ]);
+
         Storage::disk('local')->put('galleries/hidden.jpg', 'fake-bytes');
 
         $hidden = $album->media()->create([
@@ -41,6 +54,7 @@ class UnlockGalleryTest extends TestCase
             'mime_type' => 'image/jpeg',
             'size_bytes' => 1000,
             'is_featured' => false,
+            'position' => 3,
         ]);
 
         $this->get(route('media.show', $hidden))->assertForbidden();

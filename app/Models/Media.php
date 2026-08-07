@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\Media\GenerateBlurredPreview;
 use App\Enums\MediaType;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -81,6 +82,25 @@ class Media extends Model
      */
     public function isViewableBy(?User $user): bool
     {
-        return $this->is_featured || $this->album->gallery->isUnlockedFor($user);
+        return $this->is_featured || $this->isTeaser() || $this->album->gallery->isUnlockedFor($user);
+    }
+
+    /**
+     * Teasers are the first couple of locked photos in an album, shown obscured
+     * (see {@see GenerateBlurredPreview}) as a nudge to unlock
+     * the rest — a preview of what's there, never the real thing.
+     */
+    public function isTeaser(): bool
+    {
+        if (! $this->isPhoto() || $this->is_featured) {
+            return false;
+        }
+
+        return $this->album->media()
+            ->where('is_featured', false)
+            ->where('type', MediaType::Photo)
+            ->limit(2)
+            ->pluck('id')
+            ->contains($this->id);
     }
 }

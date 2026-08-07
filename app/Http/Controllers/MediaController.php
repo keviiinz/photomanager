@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Media\GenerateBlurredPreview;
 use App\Actions\Media\GenerateWatermarkedPreview;
 use App\Models\Media;
 use Illuminate\Http\Request;
@@ -11,7 +12,8 @@ class MediaController extends Controller
 {
     /**
      * Stream a media file for inline viewing (image tag / video player).
-     * Featured photos are public but served watermarked until the gallery is unlocked.
+     * Featured photos are public but served watermarked, and teaser photos
+     * blurred, until the gallery is unlocked.
      */
     public function show(Request $request, Media $media)
     {
@@ -19,12 +21,13 @@ class MediaController extends Controller
 
         $disk = Storage::disk($media->disk);
 
-        if ($media->is_featured && $media->isPhoto()) {
-            // The response for a featured photo's URL changes (watermarked vs. original)
-            // once the gallery is unlocked, so it must never be cached across that transition.
-            $path = $this->needsWatermark($media, $request)
+        if ($media->isPhoto() && ! $media->album->gallery->isUnlockedFor($request->user()) && ($media->is_featured || $media->isTeaser())) {
+            // The response for a locked photo's URL changes (watermarked/blurred vs.
+            // original) once the gallery is unlocked, so it must never be cached
+            // across that transition.
+            $path = $media->is_featured
                 ? app(GenerateWatermarkedPreview::class)($media)
-                : $media->path;
+                : app(GenerateBlurredPreview::class)($media);
 
             $response = $disk->response($path);
             $response->setPrivate()->setMaxAge(0);
@@ -57,12 +60,5 @@ class MediaController extends Controller
         $filename = $gallery->downloadFilenameBase().($extension !== '' ? ".{$extension}" : '');
 
         return Storage::disk($media->disk)->download($media->path, $filename);
-    }
-
-    protected function needsWatermark(Media $media, Request $request): bool
-    {
-        return $media->is_featured
-            && $media->isPhoto()
-            && ! $media->album->gallery->isUnlockedFor($request->user());
     }
 }
