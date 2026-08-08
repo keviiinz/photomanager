@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\HomeImageController;
 use Illuminate\Support\Facades\Route;
 
 Route::livewire('/', 'pages::home')->name('home');
+
+Route::get('imagenes-home/{homeImage}', [HomeImageController::class, 'show'])->name('home-images.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {

@@ -1,19 +1,24 @@
 <?php
 
+use App\Models\HomeImage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 new #[Layout('layouts::public')] class extends Component {
+    /**
+     * @return \Illuminate\Support\Collection<int, HomeImage>
+     */
     #[Computed]
-    public function photos(): array
+    public function images()
     {
-        $files = glob(public_path('fotos_home').'/*.{jpg,jpeg,png,webp,JPG,JPEG,PNG,WEBP}', GLOB_BRACE) ?: [];
+        return HomeImage::orderBy('position')->get();
+    }
 
-        $names = array_map('basename', $files);
-        natsort($names);
-
-        return array_values($names);
+    #[Computed]
+    public function primaryImage(): ?HomeImage
+    {
+        return $this->images->firstWhere('is_primary', true) ?? $this->images->first();
     }
 }; ?>
 
@@ -25,9 +30,9 @@ new #[Layout('layouts::public')] class extends Component {
         x-transition:leave-end="opacity-0"
         class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900"
     >
-        @if ($this->photos)
+        @if ($this->primaryImage)
             <img
-                src="{{ asset('fotos_home/'.rawurlencode($this->photos[0])) }}"
+                src="{{ route('home-images.show', $this->primaryImage) }}"
                 class="absolute inset-0 h-full w-full object-cover"
                 alt=""
             >
@@ -58,14 +63,14 @@ new #[Layout('layouts::public')] class extends Component {
 
     <div
         x-bind:class="introOpen ? 'opacity-0' : 'opacity-100'"
-        class="flex flex-col gap-24 pb-10 sm:pb-16 transition-opacity duration-700 {{ $this->photos ? '' : 'pt-10 sm:pt-16' }}"
+        class="flex flex-col gap-24 pb-10 sm:pb-16 transition-opacity duration-700 {{ $this->images->isNotEmpty() ? '' : 'pt-10 sm:pt-16' }}"
     >
-    <div class="relative {{ $this->photos ? 'left-1/2 right-1/2 -mx-[50vw] w-screen' : '' }}">
-        @if ($this->photos)
+    <div class="relative {{ $this->images->isNotEmpty() ? 'left-1/2 right-1/2 -mx-[50vw] w-screen' : '' }}">
+        @if ($this->images->isNotEmpty())
             <div
                 x-data="{
                     interval: null,
-                    loops: {{ count($this->photos) > 1 ? 2 : 1 }},
+                    loops: {{ $this->images->count() > 1 ? 2 : 1 }},
                     advance(direction) {
                         $refs.track.scrollBy({ left: direction * $refs.track.clientWidth * 0.9, behavior: 'smooth' });
                     },
@@ -98,10 +103,10 @@ new #[Layout('layouts::public')] class extends Component {
                     x-on:scrollend="wrap()"
                     class="flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                    @for ($i = 0; $i < (count($this->photos) > 1 ? 2 : 1); $i++)
-                        @foreach ($this->photos as $photo)
+                    @for ($i = 0; $i < ($this->images->count() > 1 ? 2 : 1); $i++)
+                        @foreach ($this->images as $image)
                             <img
-                                src="{{ asset('fotos_home/'.rawurlencode($photo)) }}"
+                                src="{{ route('home-images.show', $image) }}"
                                 class="h-[46vh] w-auto flex-none snap-center object-cover sm:h-[60vh] lg:h-[70vh]"
                                 alt=""
                                 loading="lazy"
@@ -110,7 +115,7 @@ new #[Layout('layouts::public')] class extends Component {
                     @endfor
                 </div>
 
-                @if (count($this->photos) > 1)
+                @if ($this->images->count() > 1)
                     <button
                         type="button"
                         x-on:click="scroll(-1)"
@@ -151,7 +156,7 @@ new #[Layout('layouts::public')] class extends Component {
             >02</span>
             <flux:heading>{{ __('Compartes el enlace') }}</flux:heading>
             <flux:text class="text-zinc-500">
-                {{ __('Tu cliente ve de inmediato las fotos destacadas, públicas y con marca de agua, sin necesidad de cuenta.') }}
+                {{ __('Tu cliente ve de inmediato las fotos destacadas, públicas y en su calidad original, sin necesidad de cuenta.') }}
             </flux:text>
         </div>
 
@@ -169,7 +174,7 @@ new #[Layout('layouts::public')] class extends Component {
 
     <section class="mx-auto flex w-full max-w-4xl flex-wrap justify-between gap-x-8 gap-y-6 border-t border-zinc-200 pt-10 pb-4 dark:border-zinc-700">
         <flux:text class="text-zinc-500">{{ __('Fotos y video') }}</flux:text>
-        <flux:text class="text-zinc-500">{{ __('Marca de agua automática') }}</flux:text>
+        <flux:text class="text-zinc-500">{{ __('Vista previa de las fotos destacadas') }}</flux:text>
         <flux:text class="text-zinc-500">{{ __('Código de acceso por sesión') }}</flux:text>
         <flux:text class="text-zinc-500">{{ __('Descarga por lote en .zip') }}</flux:text>
     </section>

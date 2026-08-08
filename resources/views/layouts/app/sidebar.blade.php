@@ -16,6 +16,9 @@
                         <flux:sidebar.item icon="clock" :href="route('admin.activity-log')" :current="request()->routeIs('admin.activity-log')" wire:navigate>
                             {{ __('Historial de eventos') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="photo" :href="route('admin.home-images')" :current="request()->routeIs('admin.home-images')" wire:navigate>
+                            {{ __('Imágenes del inicio') }}
+                        </flux:sidebar.item>
                     @elseif (auth()->user()->isPhotographer())
                         <flux:sidebar.item icon="folder-git-2" :href="route('galleries.index')" :current="request()->routeIs('galleries.index', 'galleries.create', 'galleries.edit')" wire:navigate>
                             {{ __('Galerías') }}

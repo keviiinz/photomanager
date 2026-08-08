@@ -96,7 +96,7 @@ class PublicGalleryPreviewTest extends TestCase
         $this->assertStringContainsString('featured.mp4', $response->headers->get('Location'));
     }
 
-    public function test_featured_media_is_served_watermarked_and_cannot_be_downloaded_by_a_guest(): void
+    public function test_featured_media_is_served_at_full_quality_but_cannot_be_downloaded_by_a_guest(): void
     {
         Storage::fake('local');
         $gallery = Gallery::factory()->create();
@@ -105,15 +105,17 @@ class PublicGalleryPreviewTest extends TestCase
         $image = imagecreatetruecolor(200, 150);
         ob_start();
         imagejpeg($image);
-        Storage::disk('local')->put('galleries/featured.jpg', ob_get_clean());
+        $bytes = ob_get_clean();
+        Storage::disk('local')->put('galleries/featured.jpg', $bytes);
 
         $featured = $album->media()->create($this->fakeMediaAttributes([
             'is_featured' => true,
             'path' => 'galleries/featured.jpg',
         ]));
 
-        $this->get(route('media.show', $featured))->assertOk();
-        $this->assertTrue(Storage::disk('local')->exists('galleries/featured.watermarked.jpg'));
+        $response = $this->get(route('media.show', $featured));
+        $response->assertOk();
+        $this->assertSame($bytes, $response->streamedContent());
 
         $this->get(route('media.download', $featured))->assertForbidden();
     }
@@ -139,7 +141,7 @@ class PublicGalleryPreviewTest extends TestCase
         $this->assertStringContainsString('Boda de Ana & Marco.jpg', $response->headers->get('Content-Disposition'));
     }
 
-    public function test_featured_photo_response_is_never_cached_since_it_changes_after_unlock(): void
+    public function test_teaser_photo_response_is_never_cached_since_it_changes_after_unlock(): void
     {
         Storage::fake('local');
         $gallery = Gallery::factory()->create();
@@ -148,14 +150,15 @@ class PublicGalleryPreviewTest extends TestCase
         $image = imagecreatetruecolor(200, 150);
         ob_start();
         imagejpeg($image);
-        Storage::disk('local')->put('galleries/featured.jpg', ob_get_clean());
+        Storage::disk('local')->put('galleries/teaser.jpg', ob_get_clean());
 
-        $featured = $album->media()->create($this->fakeMediaAttributes([
-            'is_featured' => true,
-            'path' => 'galleries/featured.jpg',
+        $teaser = $album->media()->create($this->fakeMediaAttributes([
+            'is_featured' => false,
+            'position' => 1,
+            'path' => 'galleries/teaser.jpg',
         ]));
 
-        $response = $this->get(route('media.show', $featured));
+        $response = $this->get(route('media.show', $teaser));
 
         $response->assertHeader('Cache-Control');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));

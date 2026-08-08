@@ -35,6 +35,12 @@ new #[Layout('layouts::public')] class extends Component {
         return $this->gallery->isUnlockedFor(Auth::user());
     }
 
+    #[Computed]
+    public function heroImage(): ?Media
+    {
+        return $this->gallery->publicCoverImage();
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, Album>
      */
@@ -170,31 +176,74 @@ new #[Layout('layouts::public')] class extends Component {
 }; ?>
 
 <div class="mx-auto flex max-w-6xl flex-col gap-16 pb-32">
-    <div class="mx-auto flex max-w-2xl flex-col items-center gap-3 pt-10 text-center sm:pt-16">
-        <span class="text-xs font-medium tracking-[0.2em] text-zinc-500 uppercase">
-            {{ $gallery->client_name }}
-        </span>
+    @if ($this->heroImage)
+        <div class="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 h-[70vh] min-h-[420px] w-screen sm:h-[85vh]">
+            <img
+                src="{{ route('media.show', $this->heroImage) }}"
+                alt=""
+                class="absolute inset-0 h-full w-full object-cover"
+            >
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/40"></div>
 
-        <h1
-            class="text-4xl leading-tight text-zinc-800 sm:text-5xl dark:text-zinc-50"
-            style="font-family: 'Instrument Serif', ui-serif, serif;"
-        >
-            {{ $gallery->title }}
-        </h1>
+            <div
+                x-data="{ shown: false }"
+                x-init="setTimeout(() => shown = true, 150)"
+                class="relative flex h-full flex-col items-center justify-center gap-4 px-6 text-center"
+            >
+                <h1 class="flex flex-wrap justify-center text-4xl font-bold tracking-wide text-white uppercase sm:text-6xl">
+                    @foreach (mb_str_split($gallery->title) as $index => $letter)
+                        <span
+                            x-bind:class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
+                            style="transition: opacity 0.6s ease-out {{ $index * 0.12 }}s, transform 0.6s ease-out {{ $index * 0.12 }}s;"
+                            class="inline-block whitespace-pre"
+                        >{{ $letter }}</span>
+                    @endforeach
+                </h1>
 
-        <flux:text class="text-zinc-500">
-            {{ __('Por :photographer', ['photographer' => $gallery->photographer->name]) }}
-            · {{ $gallery->created_at->translatedFormat('d M Y') }}
-            @if ($gallery->location)
-                · {{ $gallery->location }}
-            @endif
-        </flux:text>
+                <p
+                    x-bind:class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
+                    class="text-sm tracking-[0.25em] text-white/85 uppercase transition-all duration-700 ease-out [transition-delay:1100ms]"
+                >
+                    {{ $gallery->created_at->translatedFormat('d M Y') }}
+                </p>
 
-        @if ($gallery->available_until)
+                <a
+                    href="#galeria"
+                    x-bind:class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
+                    class="mt-2 rounded border border-white/70 px-6 py-2 text-xs font-medium tracking-[0.2em] text-white uppercase transition-all duration-700 ease-out hover:bg-white/10 [transition-delay:1350ms]"
+                >
+                    {{ __('Ver galería') }}
+                </a>
+
+                
+            </div>
+        </div>
+    @endif
+
+    <div id="galeria" class="mx-auto flex w-full max-w-6xl flex-col gap-4 pt-10 sm:flex-row sm:items-center sm:justify-between sm:pt-16">
+        <div class="flex flex-col items-center gap-1 text-center sm:items-start sm:text-left">
+            <span class="text-xs font-medium tracking-[0.2em] text-zinc-500 uppercase">
+                {{ $gallery->client_name }}
+            </span>
+
+            <h1
+                class="text-2xl leading-tight text-zinc-800 sm:text-3xl dark:text-zinc-50"
+                style="font-family: 'Instrument Serif', ui-serif, serif;"
+            >
+                {{ $gallery->title }}
+            </h1>
+
             <flux:text class="text-sm text-zinc-500">
-                {{ __('Disponible hasta :date', ['date' => $gallery->available_until->translatedFormat('d M Y')]) }}
+                {{ __('Por :photographer', ['photographer' => $gallery->photographer->name]) }}
+                · {{ $gallery->created_at->translatedFormat('d M Y') }}
+                @if ($gallery->location)
+                    · {{ $gallery->location }}
+                @endif
+                @if ($gallery->available_until)
+                    · {{ __('Disponible hasta :date', ['date' => $gallery->available_until->translatedFormat('d M Y')]) }}
+                @endif
             </flux:text>
-        @endif
+        </div>
 
         <div
             wire:key="gallery-actions-{{ $activeAlbumId }}"
@@ -245,7 +294,7 @@ new #[Layout('layouts::public')] class extends Component {
                     setTimeout(() => this.copied = false, 2000);
                 },
             }"
-            class="mt-2 flex items-center gap-3"
+            class="flex items-center justify-center gap-3 sm:justify-end"
         >
             <button
                 type="button"

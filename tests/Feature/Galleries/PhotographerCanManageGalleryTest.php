@@ -69,6 +69,75 @@ class PhotographerCanManageGalleryTest extends TestCase
         $this->assertSame(1, $album->media()->where('type', 'video')->count());
     }
 
+    public function test_photographer_can_remove_a_pending_file_before_uploading(): void
+    {
+        Storage::fake('local');
+        config(['filesystems.default' => 'local']);
+
+        $photographer = User::factory()->create();
+        $gallery = Gallery::factory()->create(['photographer_id' => $photographer->id]);
+
+        $this->actingAs($photographer);
+
+        $component = Livewire::test('pages::galleries.edit', ['gallery' => $gallery])
+            ->set('newFiles', [
+                UploadedFile::fake()->image('uno.jpg'),
+                UploadedFile::fake()->image('dos.jpg'),
+            ]);
+
+        $component->call('removePendingFile', 0);
+
+        $this->assertCount(1, $component->get('newFiles'));
+        $this->assertSame('dos.jpg', $component->get('newFiles')[0]->getClientOriginalName());
+
+        $component->call('uploadFiles')->assertHasNoErrors();
+
+        $album = $gallery->albums()->first();
+        $this->assertSame(1, $album->media()->count());
+        $this->assertSame('dos.jpg', $album->media()->first()->original_name);
+    }
+
+    public function test_photographer_can_reorder_media_within_an_album(): void
+    {
+        $photographer = User::factory()->create();
+        $gallery = Gallery::factory()->create(['photographer_id' => $photographer->id]);
+        $album = $gallery->albums()->first();
+
+        $first = $album->media()->create($this->fakeMediaAttributes(['position' => 0]));
+        $second = $album->media()->create($this->fakeMediaAttributes(['position' => 1]));
+        $third = $album->media()->create($this->fakeMediaAttributes(['position' => 2]));
+
+        $this->actingAs($photographer);
+
+        Livewire::test('pages::galleries.edit', ['gallery' => $gallery])
+            ->call('saveMediaOrder', [$third->id, $first->id, $second->id])
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, $third->fresh()->position);
+        $this->assertSame(1, $first->fresh()->position);
+        $this->assertSame(2, $second->fresh()->position);
+    }
+
+    public function test_reordering_media_ignores_ids_from_another_gallery(): void
+    {
+        $photographer = User::factory()->create();
+        $gallery = Gallery::factory()->create(['photographer_id' => $photographer->id]);
+        $album = $gallery->albums()->first();
+        $media = $album->media()->create($this->fakeMediaAttributes(['position' => 0]));
+
+        $otherGallery = Gallery::factory()->create();
+        $otherMedia = $otherGallery->albums()->first()->media()->create($this->fakeMediaAttributes(['position' => 0]));
+
+        $this->actingAs($photographer);
+
+        Livewire::test('pages::galleries.edit', ['gallery' => $gallery])
+            ->call('saveMediaOrder', [$otherMedia->id, $media->id])
+            ->assertHasNoErrors();
+
+        $this->assertSame(0, $otherMedia->fresh()->position);
+        $this->assertSame(1, $media->fresh()->position);
+    }
+
     public function test_photographer_can_mark_a_photo_as_featured_and_regenerate_code(): void
     {
         $photographer = User::factory()->create();
@@ -170,5 +239,21 @@ class PhotographerCanManageGalleryTest extends TestCase
 
         Livewire::test('pages::galleries.edit', ['gallery' => $gallery])
             ->assertForbidden();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    protected function fakeMediaAttributes(array $overrides = []): array
+    {
+        return array_merge([
+            'type' => 'photo',
+            'disk' => 'local',
+            'path' => 'galleries/fake-'.uniqid().'.jpg',
+            'original_name' => 'fake.jpg',
+            'mime_type' => 'image/jpeg',
+            'size_bytes' => 1000,
+        ], $overrides);
     }
 }

@@ -122,6 +122,12 @@ new #[Title('Editar galería')] class extends Component {
         Flux::toast(variant: 'success', text: __('Álbum eliminado.'));
     }
 
+    public function removePendingFile(int $index): void
+    {
+        unset($this->newFiles[$index]);
+        $this->newFiles = array_values($this->newFiles);
+    }
+
     public function uploadFiles(): void
     {
         $this->validate([
@@ -177,6 +183,30 @@ new #[Title('Editar galería')] class extends Component {
         unset($this->coverImageId);
 
         Flux::toast(variant: 'success', text: __('Portada actualizada.'));
+    }
+
+    /**
+     * @param  array<int, int>  $orderedIds
+     */
+    public function saveMediaOrder(array $orderedIds): void
+    {
+        $album = $this->activeAlbum;
+
+        abort_unless($album, 422);
+
+        $validIds = $album->media()->pluck('id')->all();
+
+        foreach ($orderedIds as $index => $mediaId) {
+            if (! in_array($mediaId, $validIds, true)) {
+                continue;
+            }
+
+            Media::whereKey($mediaId)->update(['position' => $index]);
+        }
+
+        unset($this->albums);
+
+        Flux::toast(variant: 'success', text: __('Orden guardado.'));
     }
 
     public function deleteMedia(int $mediaId): void
@@ -357,16 +387,36 @@ new #[Title('Editar galería')] class extends Component {
             <section class="rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
                 <flux:heading class="mb-4">{{ $this->activeAlbum->title }}</flux:heading>
 
-                <form wire:submit="uploadFiles" class="mb-6 flex flex-wrap items-end gap-4">
-                    <flux:input type="file" wire:model="newFiles" multiple :label="__('Subir fotos/videos')" />
-                    <flux:button
-                        type="submit"
-                        variant="primary"
-                        wire:loading.attr="disabled"
-                        wire:target="newFiles,uploadFiles"
-                    >
-                        {{ __('Subir') }}
-                    </flux:button>
+                <form wire:submit="uploadFiles" class="mb-6 flex flex-col gap-4">
+                    <div class="flex flex-wrap items-end gap-4">
+                        <flux:input type="file" wire:model="newFiles" multiple :label="__('Subir fotos/videos')" />
+                        <flux:button
+                            type="submit"
+                            variant="primary"
+                            wire:loading.attr="disabled"
+                            wire:target="newFiles,uploadFiles"
+                        >
+                            {{ __('Subir') }}
+                        </flux:button>
+                    </div>
+
+                    @if (! empty($newFiles))
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($newFiles as $index => $file)
+                                <span class="flex items-center gap-2 rounded-full bg-zinc-100 py-1 pr-1 pl-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                    {{ $file->getClientOriginalName() }}
+                                    <button
+                                        type="button"
+                                        wire:click="removePendingFile({{ $index }})"
+                                        class="flex size-5 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-100"
+                                        aria-label="{{ __('Quitar') }}"
+                                    >
+                                        <flux:icon name="x-mark" class="size-3" />
+                                    </button>
+                                </span>
+                            @endforeach
+                        </div>
+                    @endif
                 </form>
                 <div wire:loading wire:target="newFiles" class="mb-4 text-sm text-zinc-500">
                     {{ __('Cargando archivo(s), espera antes de darle a Subir...') }}
@@ -381,13 +431,61 @@ new #[Title('Editar galería')] class extends Component {
                 @if ($this->activeAlbumMedia->isEmpty())
                     <flux:text class="text-zinc-500">{{ __('Este álbum aún no tiene archivos.') }}</flux:text>
                 @else
-                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                        @foreach ($this->activeAlbumMedia as $media)
-                            <div wire:key="edit-media-{{ $media->id }}" class="relative overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
-                                @if ($media->isVideo())
-                                    <div class="relative flex aspect-square items-center justify-center bg-zinc-800">
+                    <div
+                        wire:key="album-media-{{ $activeAlbumId }}-{{ $this->activeAlbumMedia->map(fn ($m) => "{$m->id}:{$m->position}:{$m->is_featured}")->implode('|') }}-{{ $this->coverImageId }}"
+                        x-data="{
+                            items: @js($this->activeAlbumMedia->map(fn ($media) => [
+                                'id' => $media->id,
+                                'url' => route('media.show', $media).($media->isVideo() ? '#t=0.1' : ''),
+                                'isVideo' => $media->isVideo(),
+                                'isFeatured' => $media->is_featured,
+                                'isCover' => $media->id === $this->coverImageId,
+                            ])->all()),
+                            dragIndex: null,
+                            dirty: false,
+                            dragStart(index) {
+                                this.dragIndex = index;
+                            },
+                            dragOver(index) {
+                                if (this.dragIndex === null || this.dragIndex === index) return;
+
+                                const moved = this.items.splice(this.dragIndex, 1)[0];
+                                this.items.splice(index, 0, moved);
+                                this.dragIndex = index;
+                                this.dirty = true;
+                            },
+                            dragEnd() {
+                                this.dragIndex = null;
+                            },
+                            async save() {
+                                await $wire.saveMediaOrder(this.items.map((item) => item.id));
+                                this.dirty = false;
+                            },
+                        }"
+                        class="flex flex-col gap-4"
+                    >
+                        <div class="flex items-center justify-between">
+                            <flux:text class="text-sm text-zinc-500">
+                                {{ __('Arrastra los archivos para cambiar su orden.') }}
+                            </flux:text>
+                            <flux:button size="sm" variant="primary" x-show="dirty" x-cloak x-on:click="save()">
+                                {{ __('Guardar orden') }}
+                            </flux:button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                            <template x-for="(item, index) in items" :key="item.id">
+                                <div
+                                    draggable="true"
+                                    x-on:dragstart="dragStart(index)"
+                                    x-on:dragover.prevent="dragOver(index)"
+                                    x-on:dragend="dragEnd()"
+                                    class="relative cursor-grab overflow-hidden rounded-lg border border-zinc-200 active:cursor-grabbing dark:border-zinc-700"
+                                >
+                                    <div x-show="item.isVideo" class="relative flex aspect-square items-center justify-center bg-zinc-800">
                                         <video
-                                            src="{{ route('media.show', $media) }}#t=0.1"
+                                            x-show="item.isVideo"
+                                            :src="item.url"
                                             preload="metadata"
                                             muted
                                             playsinline
@@ -395,35 +493,43 @@ new #[Title('Editar galería')] class extends Component {
                                         ></video>
                                         <flux:icon name="play-circle" class="relative size-10 text-white drop-shadow" />
                                     </div>
-                                @else
-                                    <img src="{{ route('media.show', $media) }}" class="aspect-square w-full object-cover" alt="">
 
-                                    <button
-                                        type="button"
-                                        wire:click="setCover({{ $media->id }})"
-                                        title="{{ __('Usar como portada') }}"
-                                        class="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full shadow-sm transition-colors {{ $this->coverImageId === $media->id ? 'bg-accent text-white' : 'bg-white/90 text-zinc-700 hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-200' }}"
-                                    >
-                                        <flux:icon name="star" variant="{{ $this->coverImageId === $media->id ? 'solid' : 'outline' }}" class="size-4" />
-                                    </button>
-                                @endif
+                                    <div x-show="!item.isVideo" class="relative">
+                                        <img :src="item.url" class="aspect-square w-full object-cover" alt="" draggable="false">
 
-                                <div class="flex items-center justify-between gap-1 p-2">
-                                    <flux:switch
-                                        wire:click="toggleFeatured({{ $media->id }})"
-                                        :checked="$media->is_featured"
-                                        :label="__('Destacada')"
-                                    />
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        icon="trash"
-                                        wire:click="deleteMedia({{ $media->id }})"
-                                        wire:confirm="{{ __('¿Eliminar este archivo?') }}"
-                                    />
+                                        <button
+                                            type="button"
+                                            x-on:click="$wire.setCover(item.id)"
+                                            title="{{ __('Usar como portada') }}"
+                                            class="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full shadow-sm transition-colors"
+                                            x-bind:class="item.isCover ? 'bg-accent text-white' : 'bg-white/90 text-zinc-700 hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-200'"
+                                        >
+                                            <flux:icon name="star" variant="solid" x-show="item.isCover" class="size-4" />
+                                            <flux:icon name="star" variant="outline" x-show="!item.isCover" class="size-4" />
+                                        </button>
+                                    </div>
+
+                                    <div class="flex items-center justify-between gap-1 p-2">
+                                        <button
+                                            type="button"
+                                            x-on:click="$wire.toggleFeatured(item.id)"
+                                            class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                                            x-bind:class="item.isFeatured ? 'bg-accent text-white' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'"
+                                        >
+                                            {{ __('Destacada') }}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            x-on:click="if (confirm('{{ __('¿Eliminar este archivo?') }}')) $wire.deleteMedia(item.id)"
+                                            class="flex size-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                                            title="{{ __('Eliminar') }}"
+                                        >
+                                            <flux:icon name="trash" class="size-4" />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        @endforeach
+                            </template>
+                        </div>
                     </div>
                 @endif
             </section>

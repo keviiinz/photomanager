@@ -108,6 +108,21 @@ class Gallery extends Model
     }
 
     /**
+     * The photo used as the public gallery page's hero background. Unlike
+     * {@see coverImage()}, this never leaks a locked photo to a visitor who
+     * hasn't unlocked the gallery — it falls back to the first featured
+     * photo whenever the chosen cover isn't one.
+     */
+    public function publicCoverImage(): ?Media
+    {
+        $cover = $this->coverImage();
+
+        return $cover?->is_featured
+            ? $cover
+            : $this->media()->where('type', 'photo')->where('is_featured', true)->orderBy('position')->first();
+    }
+
+    /**
      * @return HasManyThrough<Media, Album, $this>
      */
     public function media(): HasManyThrough
