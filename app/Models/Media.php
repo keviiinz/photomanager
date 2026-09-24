@@ -6,6 +6,8 @@ use App\Actions\Media\GenerateBlurredPreview;
 use App\Enums\MediaType;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -60,6 +62,17 @@ class Media extends Model
     }
 
     /**
+     * Media from any of the given photographer's galleries.
+     *
+     * @param  Builder<Media>  $query
+     */
+    #[Scope]
+    protected function ownedBy(Builder $query, User $photographer): void
+    {
+        $query->whereHas('album.gallery', fn (Builder $gallery) => $gallery->where('photographer_id', $photographer->id));
+    }
+
+    /**
      * @return BelongsTo<Album, $this>
      */
     public function album(): BelongsTo
@@ -82,6 +95,10 @@ class Media extends Model
      */
     public function isViewableBy(?User $user): bool
     {
+        if (! $this->album->gallery->isAvailableTo($user)) {
+            return false;
+        }
+
         return $this->is_featured || $this->isTeaser() || $this->album->gallery->isUnlockedFor($user);
     }
 

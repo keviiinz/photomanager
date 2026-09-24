@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Gallery;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
@@ -27,6 +29,31 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureGallerySharePreview();
+        $this->configurePasswordResetEmail();
+    }
+
+    /**
+     * Send the "forgot password" email in Spanish instead of Laravel's default English copy.
+     */
+    protected function configurePasswordResetEmail(): void
+    {
+        ResetPassword::toMailUsing(function (object $notifiable, string $token): MailMessage {
+            $url = route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ]);
+
+            $expires = config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
+
+            return (new MailMessage)
+                ->subject(__('Restablece tu contraseña de :app', ['app' => config('app.name')]))
+                ->greeting(__('Hola, :name', ['name' => $notifiable->name]))
+                ->line(__('Recibimos una solicitud para restablecer la contraseña de tu cuenta.'))
+                ->action(__('Restablecer contraseña'), $url)
+                ->line(__('Este enlace caduca en :count minutos.', ['count' => $expires]))
+                ->line(__('Si no fuiste tú, puedes ignorar este correo: tu contraseña no cambiará.'))
+                ->salutation(__('Saludos,')."\n\n".config('app.name'));
+        });
     }
 
     /**
@@ -40,15 +67,8 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        // Mirrors App\Rules\SecurePassword so password managers suggest passwords that pass validation.
+        Password::defaults(fn (): Password => Password::min(8)->numbers()->symbols());
     }
 
     /**

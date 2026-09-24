@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\GalleryStatus;
 use App\Models\Gallery;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,7 @@ new #[Title('Mis galerías')] class extends Component {
     #[Computed]
     public function galleries()
     {
-        return Auth::user()->savedGalleries()->with('photographer')->latest('gallery_user.created_at')->get();
+        return Auth::user()->savedGalleries()->where('status', GalleryStatus::Published)->with('photographer')->latest('gallery_user.created_at')->get();
     }
 
     public function addGallery(): void
@@ -25,7 +26,8 @@ new #[Title('Mis galerías')] class extends Component {
 
         $gallery = Gallery::where('slug', $this->extractSlug($this->slug))->first();
 
-        if (! $gallery) {
+        // A draft must look exactly like a gallery that doesn't exist.
+        if (! $gallery || ! $gallery->isVisibleTo(Auth::user())) {
             $this->addError('slug', __('No encontramos una galería con ese enlace.'));
 
             return;

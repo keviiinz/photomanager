@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\CoverLayout;
+use App\Enums\GalleryStatus;
 use Database\Factories\GalleryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,17 +23,29 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property string $title
  * @property string $client_name
  * @property string $slug
+ * @property GalleryStatus $status
  * @property string $unlock_code
  * @property string|null $location
  * @property Carbon|null $available_until
+ * @property CoverLayout $cover_layout
+ * @property bool $show_cover_in_gallery
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['photographer_id', 'title', 'client_name', 'slug', 'unlock_code', 'cover_media_id', 'location', 'available_until'])]
+#[Fillable(['photographer_id', 'title', 'client_name', 'slug', 'status', 'unlock_code', 'cover_media_id', 'cover_layout', 'show_cover_in_gallery', 'location', 'available_until'])]
 class Gallery extends Model
 {
     /** @use HasFactory<GalleryFactory> */
     use HasFactory, LogsActivity;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'cover_layout' => 'center',
+        'status' => 'draft',
+        'show_cover_in_gallery' => true,
+    ];
 
     /**
      * @return array<string, string>
@@ -41,13 +55,16 @@ class Gallery extends Model
         return [
             'unlock_code' => 'hashed',
             'available_until' => 'date',
+            'cover_layout' => CoverLayout::class,
+            'status' => GalleryStatus::class,
+            'show_cover_in_gallery' => 'boolean',
         ];
     }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['title', 'client_name', 'location', 'available_until'])
+            ->logOnly(['title', 'client_name', 'status', 'location', 'available_until'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName('gallery')
@@ -148,6 +165,43 @@ class Gallery extends Model
         }
 
         return $this->savedBy()->where('users.id', $user->id)->exists();
+    }
+
+    /**
+     * Galleries without an `available_until` date never expire; with one, they stay
+     * available through the end of that day.
+     */
+    public function isExpired(): bool
+    {
+        return $this->available_until !== null && $this->available_until->endOfDay()->isPast();
+    }
+
+    public function isPublished(): bool
+    {
+        return $this->status === GalleryStatus::Published;
+    }
+
+    public function isOwnedBy(?User $user): bool
+    {
+        return $user !== null && $user->id === $this->photographer_id;
+    }
+
+    /**
+     * Drafts are invisible to everyone but their photographer — to anyone else
+     * they don't exist (404), as opposed to published-but-expired galleries (410).
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        return $this->isOwnedBy($user) || $this->isPublished();
+    }
+
+    /**
+     * Whether the gallery (and its media) can be accessed at all by the given viewer:
+     * published and not expired. The photographer can always see their own gallery.
+     */
+    public function isAvailableTo(?User $user): bool
+    {
+        return $this->isOwnedBy($user) || ($this->isPublished() && ! $this->isExpired());
     }
 
     /**

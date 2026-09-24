@@ -23,6 +23,7 @@ use Spatie\Activitylog\Support\LogOptions;
 /**
  * @property int $id
  * @property string $name
+ * @property string|null $company_name
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -34,7 +35,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'company_name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {

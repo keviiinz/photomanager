@@ -17,6 +17,8 @@ Route::post('galerias/{gallery}/descargar-seleccion', GalleryZipDownloadControll
 Route::middleware(['auth', 'verified', 'role:photographer'])->group(function () {
     Route::livewire('galerias', 'pages::galleries.index')->name('galleries.index');
     Route::livewire('galerias/crear', 'pages::galleries.create')->name('galleries.create');
+    Route::livewire('biblioteca', 'pages::galleries.library')->name('galleries.library');
+    Route::livewire('destacados', 'pages::galleries.featured')->name('galleries.featured');
     Route::livewire('galerias/{gallery}/editar', 'pages::galleries.edit')->name('galleries.edit');
 });
 

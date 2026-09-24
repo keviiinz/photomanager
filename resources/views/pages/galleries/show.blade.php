@@ -25,6 +25,9 @@ new #[Layout('layouts::public')] class extends Component {
 
     public function mount(Gallery $gallery): void
     {
+        abort_unless($gallery->isVisibleTo(Auth::user()), 404);
+        abort_unless($gallery->isAvailableTo(Auth::user()), 410);
+
         $this->gallery = $gallery;
         $this->activeAlbumId = $gallery->albums()->orderBy('position')->first()?->id;
     }
@@ -63,6 +66,11 @@ new #[Layout('layouts::public')] class extends Component {
     public function activeAlbumMedia()
     {
         $media = $this->activeAlbum?->media()->get() ?? collect();
+
+        // The photographer can keep the cover photo out of the grid so it isn't shown twice.
+        if (! $this->gallery->show_cover_in_gallery && $this->heroImage) {
+            $media = $media->reject(fn (Media $item) => $item->id === $this->heroImage->id);
+        }
 
         if ($this->isUnlocked) {
             return $media;
@@ -177,47 +185,7 @@ new #[Layout('layouts::public')] class extends Component {
 
 <div class="mx-auto flex max-w-6xl flex-col gap-16 pb-32">
     @if ($this->heroImage)
-        <div class="relative left-1/2 right-1/2 -mx-[50vw] -mt-6 h-[70vh] min-h-[420px] w-screen sm:h-[85vh]">
-            <img
-                src="{{ route('media.show', $this->heroImage) }}"
-                alt=""
-                class="absolute inset-0 h-full w-full object-cover"
-            >
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/40"></div>
-
-            <div
-                x-data="{ shown: false }"
-                x-init="setTimeout(() => shown = true, 150)"
-                class="relative flex h-full flex-col items-center justify-center gap-4 px-6 text-center"
-            >
-                <h1 class="flex flex-wrap justify-center text-4xl font-bold tracking-wide text-white uppercase sm:text-6xl">
-                    @foreach (mb_str_split($gallery->title) as $index => $letter)
-                        <span
-                            x-bind:class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
-                            style="transition: opacity 0.6s ease-out {{ $index * 0.12 }}s, transform 0.6s ease-out {{ $index * 0.12 }}s;"
-                            class="inline-block whitespace-pre"
-                        >{{ $letter }}</span>
-                    @endforeach
-                </h1>
-
-                <p
-                    x-bind:class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
-                    class="text-sm tracking-[0.25em] text-white/85 uppercase transition-all duration-700 ease-out [transition-delay:1100ms]"
-                >
-                    {{ $gallery->created_at->translatedFormat('d M Y') }}
-                </p>
-
-                <a
-                    href="#galeria"
-                    x-bind:class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
-                    class="mt-2 rounded border border-white/70 px-6 py-2 text-xs font-medium tracking-[0.2em] text-white uppercase transition-all duration-700 ease-out hover:bg-white/10 [transition-delay:1350ms]"
-                >
-                    {{ __('Ver galería') }}
-                </a>
-
-                
-            </div>
-        </div>
+        <x-gallery-cover :gallery="$gallery" :image="$this->heroImage" />
     @endif
 
     <div id="galeria" class="mx-auto flex w-full max-w-6xl flex-col gap-4 pt-10 sm:flex-row sm:items-center sm:justify-between sm:pt-16">

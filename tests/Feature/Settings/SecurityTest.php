@@ -35,8 +35,8 @@ class SecurityTest extends TestCase
 
         $response->assertOk();
 
-        $response->assertSee('Two-factor authentication');
-        $response->assertSee('Enable 2FA');
+        $response->assertSee('Autenticación doble factor');
+        $response->assertSee('Habilitar 2FA');
     }
 
     public function test_security_settings_page_requires_password_confirmation_when_enabled(): void
@@ -59,7 +59,7 @@ class SecurityTest extends TestCase
             ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'))
             ->assertOk()
-            ->assertSee('Update password')
+            ->assertSee('Actualizar contraseña')
             ->assertDontSee('Manage your passkeys for passwordless sign-in')
             ->assertDontSee('Add a passkey to sign in without a password')
             ->assertDontSee('Two-factor authentication');
@@ -98,13 +98,13 @@ class SecurityTest extends TestCase
 
         $response = Livewire::test('pages::settings.security')
             ->set('current_password', 'password')
-            ->set('password', 'new-password')
-            ->set('password_confirmation', 'new-password')
+            ->set('password', 'nuevo#12345')
+            ->set('password_confirmation', 'nuevo#12345')
             ->call('updatePassword');
 
         $response->assertHasNoErrors();
 
-        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+        $this->assertTrue(Hash::check('nuevo#12345', $user->refresh()->password));
     }
 
     public function test_correct_password_must_be_provided_to_update_password(): void

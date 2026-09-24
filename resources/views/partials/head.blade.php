@@ -36,7 +36,7 @@
 @endisset
 
 <link rel="preconnect" href="https://fonts.bunny.net">
-<link href="https://fonts.bunny.net/css?family=instrument-serif:400,400i" rel="stylesheet" />
+<link href="https://fonts.bunny.net/css?family=instrument-serif:400,400i|ruwudu:400,500,600" rel="stylesheet" />
 
 @fonts
 

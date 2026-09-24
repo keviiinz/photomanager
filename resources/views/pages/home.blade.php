@@ -71,11 +71,76 @@ new #[Layout('layouts::public')] class extends Component {
                 x-data="{
                     interval: null,
                     loops: {{ $this->images->count() > 1 ? 2 : 1 }},
+                    count: {{ $this->images->count() }},
+                    frame: null,
+                    offsetToCenter(slide) {
+                        const track = $refs.track;
+                        const slideRect = slide.getBoundingClientRect();
+                        const trackRect = track.getBoundingClientRect();
+
+                        return slideRect.left + slideRect.width / 2 - (trackRect.left + track.clientWidth / 2);
+                    },
+                    currentIndex() {
+                        const slides = [...$refs.track.children];
+
+                        return slides.reduce((closest, slide, index) =>
+                            Math.abs(this.offsetToCenter(slide)) < Math.abs(this.offsetToCenter(slides[closest])) ? index : closest, 0);
+                    },
                     advance(direction) {
-                        $refs.track.scrollBy({ left: direction * $refs.track.clientWidth * 0.9, behavior: 'smooth' });
+                        const track = $refs.track;
+                        const slides = track.children;
+                        let index = this.currentIndex();
+
+                        if (this.loops > 1) {
+                            const oneSetWidth = slides[this.count].offsetLeft - slides[0].offsetLeft;
+
+                            if (index >= this.count) {
+                                track.style.scrollBehavior = 'auto';
+                                track.scrollLeft -= oneSetWidth;
+                                index -= this.count;
+                            } else if (direction < 0 && index === 0) {
+                                track.style.scrollBehavior = 'auto';
+                                track.scrollLeft += oneSetWidth;
+                                index += this.count;
+                            }
+                        }
+
+                        const target = slides[Math.min(Math.max(index + direction, 0), slides.length - 1)];
+
+                        this.animateTo(track.scrollLeft + this.offsetToCenter(target));
+                    },
+                    animateTo(left) {
+                        const track = $refs.track;
+                        const start = track.scrollLeft;
+                        const distance = left - start;
+                        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                        const duration = reducedMotion ? 0 : 1100;
+                        const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+                        let startTime = null;
+
+                        cancelAnimationFrame(this.frame);
+                        track.style.scrollSnapType = 'none';
+                        track.style.scrollBehavior = 'auto';
+
+                        const step = (now) => {
+                            startTime ??= now;
+                            const progress = duration ? Math.min((now - startTime) / duration, 1) : 1;
+
+                            track.scrollLeft = start + distance * easeInOutCubic(progress);
+
+                            if (progress < 1) {
+                                this.frame = requestAnimationFrame(step);
+                            } else {
+                                this.frame = null;
+                                track.style.scrollSnapType = '';
+                                track.style.scrollBehavior = '';
+                            }
+                        };
+
+                        this.frame = requestAnimationFrame(step);
                     },
                     wrap() {
-                        if (this.loops < 2) return;
+                        if (this.loops < 2 || this.frame) return;
 
                         const track = $refs.track;
                         const oneSetWidth = track.scrollWidth / this.loops;

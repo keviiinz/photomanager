@@ -28,6 +28,8 @@ new #[Title('Nueva galería')] class extends Component {
 
         $gallery = Auth::user()->galleries()->create([
             ...$validated,
+            // An emptied date input arrives as '' — store "no expiry" as NULL.
+            'available_until' => $validated['available_until'] ?: null,
             'slug' => $this->uniqueSlug($validated['title']),
         ]);
 
@@ -57,9 +59,14 @@ new #[Title('Nueva galería')] class extends Component {
         <flux:input wire:model="client_name" :label="__('Cliente')" required placeholder="Ana Pérez" />
         <flux:input wire:model="unlock_code" :label="__('Código de desbloqueo')" required placeholder="ABC123" />
 
-        <div class="grid grid-cols-2 gap-4">
-            <flux:input wire:model="available_until" :label="__('Disponible hasta')" type="date" />
-            <flux:input wire:model="location" :label="__('Lugar')" placeholder="Mérida, Yuc." />
+        <div class="flex flex-col gap-2">
+            <div class="grid grid-cols-2 gap-4">
+                <flux:input wire:model="available_until" :label="__('Disponible hasta')" :badge="__('Opcional')" type="date" />
+                <flux:input wire:model="location" :label="__('Lugar')" :badge="__('Opcional')" placeholder="Mérida, Yuc." />
+            </div>
+            <flux:text class="text-sm text-zinc-500">
+                {{ __('Déjala vacía para que la galería esté disponible siempre. Si pones una fecha, tus clientes ya no podrán abrirla después de ese día.') }}
+            </flux:text>
         </div>
 
         <div class="flex justify-end gap-2">

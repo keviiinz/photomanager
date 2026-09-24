@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\GalleryStatus;
 use App\Models\Gallery;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -29,6 +30,15 @@ class GalleryFactory extends Factory
             'unlock_code' => Str::upper(Str::random(8)),
             'location' => $this->faker->optional()->city(),
             'available_until' => null,
+            'status' => GalleryStatus::Published,
         ];
+    }
+
+    /**
+     * A gallery that hasn't been published yet (the default for newly created ones).
+     */
+    public function draft(): static
+    {
+        return $this->state(fn () => ['status' => GalleryStatus::Draft]);
     }
 }

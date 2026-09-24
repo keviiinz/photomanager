@@ -10,6 +10,8 @@
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('Plataforma')" class="grid">
                     @if (auth()->user()->isSuperadmin())
@@ -20,8 +22,14 @@
                             {{ __('Imágenes del inicio') }}
                         </flux:sidebar.item>
                     @elseif (auth()->user()->isPhotographer())
-                        <flux:sidebar.item icon="folder-git-2" :href="route('galleries.index')" :current="request()->routeIs('galleries.index', 'galleries.create', 'galleries.edit')" wire:navigate>
+                        <flux:sidebar.item icon="rectangle-stack" :href="route('galleries.index')" :current="request()->routeIs('galleries.index', 'galleries.create', 'galleries.edit')" wire:navigate>
                             {{ __('Galerías') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="photo" :href="route('galleries.library')" :current="request()->routeIs('galleries.library')" wire:navigate>
+                            {{ __('Biblioteca') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="sparkles" :href="route('galleries.featured')" :current="request()->routeIs('galleries.featured')" wire:navigate>
+                            {{ __('Destacados') }}
                         </flux:sidebar.item>
                     @else
                         <flux:sidebar.item icon="folder-git-2" :href="route('galleries.my')" :current="request()->routeIs('galleries.my')" wire:navigate>
@@ -30,10 +38,6 @@
                     @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
-
-            <flux:spacer />
-
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
         <!-- Mobile User Menu -->

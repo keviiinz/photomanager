@@ -13,6 +13,8 @@ class GalleryZipDownloadController extends Controller
 {
     public function __invoke(Request $request, Gallery $gallery)
     {
+        abort_unless($gallery->isVisibleTo($request->user()), 404);
+        abort_unless($gallery->isAvailableTo($request->user()), 410);
         abort_unless($gallery->isUnlockedFor($request->user()), 403);
 
         $validated = $request->validate([

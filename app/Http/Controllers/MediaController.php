@@ -67,6 +67,8 @@ class MediaController extends Controller
     {
         $gallery = $media->album->gallery;
 
+        abort_unless($gallery->isVisibleTo($request->user()), 404);
+        abort_unless($gallery->isAvailableTo($request->user()), 410);
         abort_unless($gallery->isUnlockedFor($request->user()), 403);
 
         activity('gallery')
