@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
+        "ext-bcmath": "*",
         "ext-fileinfo": "*",
         "ext-gd": "*",
         "ext-pdo_pgsql": "*",
